@@ -72,6 +72,7 @@ impl<T> AttachmentData<T> {
 pub(crate) struct RenderPassContext {
     pub attachments: AttachmentData<TextureFormat>,
     pub sample_count: u32,
+    pub multiview: Option<NonZeroU32>,
 }
 #[derive(Clone, Debug, Error)]
 pub enum RenderPassCompatibilityError {
@@ -84,6 +85,8 @@ pub enum RenderPassCompatibilityError {
     IncompatibleDepthStencilAttachment(Option<TextureFormat>, Option<TextureFormat>),
     #[error("Incompatible sample count: {0:?} != {1:?}")]
     IncompatibleSampleCount(u32, u32),
+    #[error("Incompatible multiview: {0:?} != {1:?}")]
+    IncompatibleMultiview(Option<NonZeroU32>, Option<NonZeroU32>),
 }
 
 impl RenderPassContext {
@@ -110,6 +113,12 @@ impl RenderPassContext {
             return Err(RenderPassCompatibilityError::IncompatibleSampleCount(
                 self.sample_count,
                 other.sample_count,
+            ));
+        }
+        if self.multiview != other.multiview {
+            return Err(RenderPassCompatibilityError::IncompatibleMultiview(
+                self.multiview,
+                other.multiview,
             ));
         }
         Ok(())
@@ -1108,6 +1117,44 @@ impl<A: HalApi> Device<A> {
             .collect()
     }
 
+    /// Generate information about late-validated buffer bindings for pipelines.
+    //TODO: should this be combined with `get_introspection_bind_group_layouts` in some way?
+    fn make_late_sized_buffer_groups<'a>(
+        shader_binding_sizes: &FastHashMap<naga::ResourceBinding, wgt::BufferSize>,
+        layout: &binding_model::PipelineLayout<A>,
+        bgl_guard: &'a Storage<binding_model::BindGroupLayout<A>, id::BindGroupLayoutId>,
+    ) -> ArrayVec<pipeline::LateSizedBufferGroup, { hal::MAX_BIND_GROUPS }> {
+        // Given the shader-required binding sizes and the pipeline layout,
+        // return the filtered list of them in the layout order,
+        // removing those with given `min_binding_size`.
+        layout
+            .bind_group_layout_ids
+            .iter()
+            .enumerate()
+            .map(|(group_index, &bgl_id)| pipeline::LateSizedBufferGroup {
+                shader_sizes: bgl_guard[bgl_id]
+                    .entries
+                    .values()
+                    .filter_map(|entry| match entry.ty {
+                        wgt::BindingType::Buffer {
+                            min_binding_size: None,
+                            ..
+                        } => {
+                            let rb = naga::ResourceBinding {
+                                group: group_index as u32,
+                                binding: entry.binding,
+                            };
+                            let shader_size =
+                                shader_binding_sizes.get(&rb).map_or(0, |nz| nz.get());
+                            Some(shader_size)
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+            })
+            .collect()
+    }
+
     fn create_bind_group_layout(
         &self,
         self_id: id::DeviceId,
@@ -1287,6 +1334,7 @@ impl<A: HalApi> Device<A> {
         decl: &wgt::BindGroupLayoutEntry,
         used_buffer_ranges: &mut Vec<BufferInitTrackerAction>,
         dynamic_binding_info: &mut Vec<binding_model::BindGroupDynamicBindingData>,
+        late_buffer_binding_sizes: &mut Vec<wgt::BufferSize>,
         used: &mut TrackerSet,
         storage: &'a Storage<resource::Buffer<A>, id::BufferId>,
         limits: &wgt::Limits,
@@ -1384,8 +1432,10 @@ impl<A: HalApi> Device<A> {
                     min: min_size,
                 });
             }
-        } else if bind_size == 0 {
-            return Err(Error::BindingZeroSize(bb.buffer_id));
+        } else {
+            let late_size =
+                wgt::BufferSize::new(bind_size).ok_or(Error::BindingZeroSize(bb.buffer_id))?;
+            late_buffer_binding_sizes.push(late_size);
         }
 
         assert_eq!(bb.offset % wgt::COPY_BUFFER_ALIGNMENT, 0);
@@ -1461,6 +1511,7 @@ impl<A: HalApi> Device<A> {
         // TODO: arrayvec/smallvec
         // Record binding info for dynamic offset validation
         let mut dynamic_binding_info = Vec::new();
+        let mut late_buffer_binding_sizes = Vec::new();
         // fill out the descriptors
         let mut used = TrackerSet::new(A::VARIANT);
 
@@ -1490,6 +1541,7 @@ impl<A: HalApi> Device<A> {
                         decl,
                         &mut used_buffer_ranges,
                         &mut dynamic_binding_info,
+                        &mut late_buffer_binding_sizes,
                         &mut used,
                         &*buffer_guard,
                         &self.limits,
@@ -1511,6 +1563,7 @@ impl<A: HalApi> Device<A> {
                             decl,
                             &mut used_buffer_ranges,
                             &mut dynamic_binding_info,
+                            &mut late_buffer_binding_sizes,
                             &mut used,
                             &*buffer_guard,
                             &self.limits,
@@ -1665,6 +1718,7 @@ impl<A: HalApi> Device<A> {
             used_buffer_ranges,
             used_texture_ranges,
             dynamic_binding_info,
+            late_buffer_binding_sizes,
         })
     }
 
@@ -2005,6 +2059,7 @@ impl<A: HalApi> Device<A> {
 
         let mut derived_group_layouts =
             ArrayVec::<binding_model::BindEntryMap, { hal::MAX_BIND_GROUPS }>::new();
+        let mut shader_binding_sizes = FastHashMap::default();
 
         let io = validation::StageIo::default();
         let (shader_module_guard, _) = hub.shader_modules.read(&mut token);
@@ -2033,6 +2088,7 @@ impl<A: HalApi> Device<A> {
                 let _ = interface.check_stage(
                     provided_layouts.as_ref().map(|p| p.as_slice()),
                     &mut derived_group_layouts,
+                    &mut shader_binding_sizes,
                     &desc.stage.entry_point,
                     flag,
                     io,
@@ -2053,6 +2109,9 @@ impl<A: HalApi> Device<A> {
         let layout = pipeline_layout_guard
             .get(pipeline_layout_id)
             .map_err(|_| pipeline::CreateComputePipelineError::InvalidLayout)?;
+
+        let late_sized_buffer_groups =
+            Device::make_late_sized_buffer_groups(&shader_binding_sizes, layout, &*bgl_guard);
 
         let pipeline_desc = hal::ComputePipelineDescriptor {
             label: desc.label.borrow_option(),
@@ -2088,6 +2147,7 @@ impl<A: HalApi> Device<A> {
                 value: id::Valid(self_id),
                 ref_count: self.life_guard.add_ref(),
             },
+            late_sized_buffer_groups,
             life_guard: LifeGuard::new(desc.label.borrow_or_default()),
         };
         Ok(pipeline)
@@ -2117,6 +2177,7 @@ impl<A: HalApi> Device<A> {
 
         let mut derived_group_layouts =
             ArrayVec::<binding_model::BindEntryMap, { hal::MAX_BIND_GROUPS }>::new();
+        let mut shader_binding_sizes = FastHashMap::default();
 
         let color_targets = desc
             .fragment
@@ -2340,6 +2401,7 @@ impl<A: HalApi> Device<A> {
                     .check_stage(
                         provided_layouts.as_ref().map(|p| p.as_slice()),
                         &mut derived_group_layouts,
+                        &mut shader_binding_sizes,
                         &stage.entry_point,
                         flag,
                         io,
@@ -2385,6 +2447,7 @@ impl<A: HalApi> Device<A> {
                             .check_stage(
                                 provided_layouts.as_ref().map(|p| p.as_slice()),
                                 &mut derived_group_layouts,
+                                &mut shader_binding_sizes,
                                 &fragment.stage.entry_point,
                                 flag,
                                 io,
@@ -2454,6 +2517,14 @@ impl<A: HalApi> Device<A> {
             .get(pipeline_layout_id)
             .map_err(|_| pipeline::CreateRenderPipelineError::InvalidLayout)?;
 
+        // Multiview is only supported if the feature is enabled
+        if desc.multiview.is_some() {
+            self.require_features(wgt::Features::MULTIVIEW)?;
+        }
+
+        let late_sized_buffer_groups =
+            Device::make_late_sized_buffer_groups(&shader_binding_sizes, layout, &*bgl_guard);
+
         let pipeline_desc = hal::RenderPipelineDescriptor {
             label: desc.label.borrow_option(),
             layout: &layout.raw,
@@ -2464,6 +2535,7 @@ impl<A: HalApi> Device<A> {
             multisample: desc.multisample,
             fragment_stage,
             color_targets,
+            multiview: desc.multiview,
         };
         let raw =
             unsafe { self.raw.create_render_pipeline(&pipeline_desc) }.map_err(
@@ -2490,6 +2562,7 @@ impl<A: HalApi> Device<A> {
                 depth_stencil: depth_stencil_state.as_ref().map(|state| state.format),
             },
             sample_count: samples,
+            multiview: desc.multiview,
         };
 
         let mut flags = pipeline::PipelineFlags::empty();
@@ -2523,6 +2596,7 @@ impl<A: HalApi> Device<A> {
             flags,
             strip_index_format: desc.primitive.strip_index_format,
             vertex_strides,
+            late_sized_buffer_groups,
             life_guard: LifeGuard::new(desc.label.borrow_or_default()),
         };
         Ok(pipeline)
@@ -3204,6 +3278,7 @@ impl<G: GlobalIdentityHandlerFactory> Global<G> {
     ///
     /// - `hal_texture` must be created from `device_id` corresponding raw handle.
     /// - `hal_texture` must be created respecting `desc`
+    /// - `hal_texture` must be initialized
     pub unsafe fn create_texture_from_hal<A: HalApi>(
         &self,
         hal_texture: A::Texture,
@@ -3243,8 +3318,14 @@ impl<G: GlobalIdentityHandlerFactory> Global<G> {
                 Err(error) => break error,
             };
 
-            let texture =
+            let mut texture =
                 device.create_texture_from_hal(hal_texture, device_id, desc, format_features);
+            if desc.usage.contains(wgt::TextureUsages::COPY_DST) {
+                texture.hal_usage |= hal::TextureUses::COPY_DST;
+            }
+
+            texture.initialization_status = TextureInitTracker::new(desc.mip_level_count, 0);
+
             let num_levels = texture.full_range.levels.end;
             let num_layers = texture.full_range.layers.end;
             let ref_count = texture.life_guard.add_ref();

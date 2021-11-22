@@ -124,6 +124,16 @@ impl Context {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
+    pub unsafe fn device_as_hal<A: wgc::hub::HalApi, F: FnOnce(Option<&A::Device>) -> R, R>(
+        &self,
+        device: &Device,
+        hal_device_callback: F,
+    ) -> R {
+        self.0
+            .device_as_hal::<A, F, R>(device.id, hal_device_callback)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub unsafe fn texture_as_hal<A: wgc::hub::HalApi, F: FnOnce(Option<&A::Texture>)>(
         &self,
         texture: &Texture,
@@ -1275,6 +1285,7 @@ impl crate::Context for Context {
                 },
                 targets: Borrowed(frag.targets),
             }),
+            multiview: desc.multiview,
         };
 
         let global = &self.0;
@@ -1496,6 +1507,7 @@ impl crate::Context for Context {
             color_formats: Borrowed(desc.color_formats),
             depth_stencil: desc.depth_stencil,
             sample_count: desc.sample_count,
+            multiview: desc.multiview,
         };
         match wgc::command::RenderBundleEncoder::new(&descriptor, device.id, None) {
             Ok(id) => id,
