@@ -329,7 +329,7 @@ struct DeviceShared {
 
 pub struct Device {
     shared: Arc<DeviceShared>,
-    mem_allocator: Mutex<gpu_alloc::GpuAllocator<vk::DeviceMemory>>,
+    mem_allocator: Mutex<gpu_allocator::vulkan::Allocator>,
     desc_allocator:
         Mutex<gpu_descriptor::DescriptorAllocator<vk::DescriptorPool, vk::DescriptorSet>>,
     valid_ash_memory_types: u32,
@@ -355,14 +355,14 @@ pub struct Queue {
 #[derive(Debug)]
 pub struct Buffer {
     raw: vk::Buffer,
-    block: Mutex<gpu_alloc::MemoryBlock<vk::DeviceMemory>>,
+    block: Mutex<gpu_allocator::vulkan::Allocation>,
 }
 
 #[derive(Debug)]
 pub struct Texture {
     raw: vk::Image,
     drop_guard: Option<DropGuard>,
-    block: Option<gpu_alloc::MemoryBlock<vk::DeviceMemory>>,
+    block: Option<gpu_allocator::vulkan::Allocation>,
     usage: crate::TextureUses,
     aspects: crate::FormatAspects,
     format_info: wgt::TextureFormatInfo,

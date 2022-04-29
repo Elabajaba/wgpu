@@ -1,6 +1,7 @@
 use super::conv;
 
 use ash::{extensions::khr, vk};
+use gpu_allocator::vulkan::{AllocatorCreateDesc, Allocator};
 use parking_lot::Mutex;
 
 use std::{collections::BTreeMap, ffi::CStr, sync::Arc};
@@ -1348,33 +1349,14 @@ impl super::Adapter {
             relay_index: None,
         };
 
-        let mem_allocator = {
-            let limits = self.phd_capabilities.properties.limits;
-            let config = gpu_alloc::Config::i_am_prototyping(); //TODO
-            let properties = gpu_alloc::DeviceProperties {
-                max_memory_allocation_count: limits.max_memory_allocation_count,
-                max_memory_allocation_size: u64::max_value(), // TODO
-                non_coherent_atom_size: limits.non_coherent_atom_size,
-                memory_types: memory_types
-                    .iter()
-                    .map(|memory_type| gpu_alloc::MemoryType {
-                        props: gpu_alloc::MemoryPropertyFlags::from_bits_truncate(
-                            memory_type.property_flags.as_raw() as u8,
-                        ),
-                        heap: memory_type.heap_index,
-                    })
-                    .collect(),
-                memory_heaps: mem_properties.memory_heaps
-                    [..mem_properties.memory_heap_count as usize]
-                    .iter()
-                    .map(|&memory_heap| gpu_alloc::MemoryHeap {
-                        size: memory_heap.size,
-                    })
-                    .collect(),
-                buffer_device_address: false,
-            };
-            gpu_alloc::GpuAllocator::new(config, properties)
-        };
+        let mem_allocator = Allocator::new(&AllocatorCreateDesc {
+            instance: self.instance.raw.clone(),
+            device: shared.raw.clone(),
+            physical_device: self.raw,
+            debug_settings: Default::default(),
+            buffer_device_address: false, 
+        }).unwrap();
+
         let desc_allocator = gpu_descriptor::DescriptorAllocator::new(
             if let Some(vk_12) = self.phd_capabilities.vulkan_1_2 {
                 vk_12.max_update_after_bind_descriptors_in_all_pools
