@@ -33,4 +33,3 @@ default-members = ["wgpu", "wgpu-hal", "wgpu-info"]
 #web-sys = { path = "../wasm-bindgen/crates/web-sys" }
 #js-sys = { path = "../wasm-bindgen/crates/js-sys" }
 #wasm-bindgen = { path = "../wasm-bindgen" }
-gpu-allocator = { git = "https://github.com/Traverse-Research/gpu-allocator", branch = "ash-0.37"}
