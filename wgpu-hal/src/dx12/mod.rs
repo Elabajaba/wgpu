@@ -392,7 +392,7 @@ impl crate::BufferBinding<'_, Api> {
 #[derive(Debug)]
 pub struct Texture {
     resource: native::Resource,
-    drop_guard: Option<crate::DropGuard>,
+    drop_guard: Option<crate::vulkan::DropGuard>,
     allocation: Option<Allocation>,
     format: wgt::TextureFormat,
     dimension: wgt::TextureDimension,
