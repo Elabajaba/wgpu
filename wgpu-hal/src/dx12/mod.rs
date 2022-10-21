@@ -44,6 +44,7 @@ mod view;
 use crate::auxil::{self, dxgi::result::HResult as _};
 
 use arrayvec::ArrayVec;
+use gpu_allocator::d3d12::Allocation;
 use parking_lot::Mutex;
 use std::{ffi, fmt, mem, num::NonZeroU32, sync::Arc};
 use winapi::{
@@ -233,6 +234,7 @@ pub struct Device {
     #[cfg(feature = "renderdoc")]
     render_doc: crate::auxil::renderdoc::RenderDoc,
     null_rtv_handle: descriptor::Handle,
+    mem_allocator: Mutex<gpu_allocator::d3d12::Allocator>,
 }
 
 unsafe impl Send for Device {}
@@ -367,7 +369,8 @@ unsafe impl Sync for CommandBuffer {}
 #[derive(Debug)]
 pub struct Buffer {
     resource: native::Resource,
-    size: wgt::BufferAddress,
+    // size: wgt::BufferAddress,
+    allocation: Option<Allocation>,
 }
 
 unsafe impl Send for Buffer {}
@@ -377,7 +380,7 @@ impl crate::BufferBinding<'_, Api> {
     fn resolve_size(&self) -> wgt::BufferAddress {
         match self.size {
             Some(size) => size.get(),
-            None => self.buffer.size - self.offset,
+            None => self.buffer.allocation.as_ref().unwrap().size() - self.offset,
         }
     }
 
@@ -389,6 +392,8 @@ impl crate::BufferBinding<'_, Api> {
 #[derive(Debug)]
 pub struct Texture {
     resource: native::Resource,
+    drop_guard: Option<crate::DropGuard>,
+    allocation: Option<Allocation>,
     format: wgt::TextureFormat,
     dimension: wgt::TextureDimension,
     size: wgt::Extent3d,
@@ -745,6 +750,8 @@ impl crate::Surface<Api> for Surface {
         sc.acquired_count += 1;
 
         let texture = Texture {
+            drop_guard: None,
+            allocation: None,
             resource: sc.resources[index],
             format: sc.format,
             dimension: wgt::TextureDimension::D2,

@@ -4,6 +4,10 @@ use crate::{
 };
 
 use super::{conv, descriptor, view};
+use gpu_allocator::{
+    d3d12::{winapi_d3d12::D3D12_RESOURCE_DESC, AllocationCreateDesc, ToWinapi, ToWindows},
+    MemoryLocation,
+};
 use parking_lot::Mutex;
 use std::{ffi, mem, num::NonZeroU32, ptr, slice, sync::Arc};
 use winapi::{
@@ -38,7 +42,7 @@ impl super::Device {
 
         let mut zero_buffer = native::Resource::null();
         unsafe {
-            let raw_desc = d3d12::D3D12_RESOURCE_DESC {
+            let raw_desc = D3D12_RESOURCE_DESC {
                 Dimension: d3d12::D3D12_RESOURCE_DIMENSION_BUFFER,
                 Alignment: 0,
                 Width: super::ZERO_BUFFER_SIZE,
@@ -139,6 +143,18 @@ impl super::Device {
             null_rtv_handle.raw,
         );
 
+        let mem_allocator = {
+            let device = raw.as_ptr();
+
+            match gpu_allocator::d3d12::Allocator::new(&gpu_allocator::d3d12::AllocatorCreateDesc {
+                device: device.as_windows().clone(),
+                debug_settings: Default::default(),
+            }) {
+                Ok(allocator) => allocator,
+                Err(e) => panic!("Failed to create d3d12 allocator, error: {}", e),
+            }
+        };
+
         Ok(super::Device {
             raw,
             present_queue,
@@ -165,6 +181,7 @@ impl super::Device {
             #[cfg(feature = "renderdoc")]
             render_doc: Default::default(),
             null_rtv_handle,
+            mem_allocator: Mutex::new(mem_allocator),
         })
     }
 
@@ -305,7 +322,10 @@ impl super::Device {
         mip_level_count: u32,
         sample_count: u32,
     ) -> super::Texture {
+        // TODO
         super::Texture {
+            allocation: None,
+            drop_guard: None,
             resource,
             format,
             dimension,
@@ -318,6 +338,7 @@ impl super::Device {
 
 impl crate::Device<super::Api> for super::Device {
     unsafe fn exit(self, queue: super::Queue) {
+        drop(self.mem_allocator);
         self.rtv_pool.lock().free_handle(self.null_rtv_handle);
         self.rtv_pool.into_inner().destroy();
         self.dsv_pool.into_inner().destroy();
@@ -339,7 +360,7 @@ impl crate::Device<super::Api> for super::Device {
             size = ((size - 1) | align_mask) + 1;
         }
 
-        let raw_desc = d3d12::D3D12_RESOURCE_DESC {
+        let raw_desc = D3D12_RESOURCE_DESC {
             Dimension: d3d12::D3D12_RESOURCE_DIMENSION_BUFFER,
             Alignment: 0,
             Width: size,
@@ -358,32 +379,53 @@ impl crate::Device<super::Api> for super::Device {
         let is_cpu_read = desc.usage.contains(crate::BufferUses::MAP_READ);
         let is_cpu_write = desc.usage.contains(crate::BufferUses::MAP_WRITE);
 
-        let heap_properties = d3d12::D3D12_HEAP_PROPERTIES {
-            Type: d3d12::D3D12_HEAP_TYPE_CUSTOM,
-            CPUPageProperty: if is_cpu_read {
-                d3d12::D3D12_CPU_PAGE_PROPERTY_WRITE_BACK
-            } else if is_cpu_write {
-                d3d12::D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE
-            } else {
-                d3d12::D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE
-            },
-            MemoryPoolPreference: match self.private_caps.memory_architecture {
-                super::MemoryArchitecture::NonUnified if !is_cpu_read && !is_cpu_write => {
-                    d3d12::D3D12_MEMORY_POOL_L1
-                }
-                _ => d3d12::D3D12_MEMORY_POOL_L0,
-            },
-            CreationNodeMask: 0,
-            VisibleNodeMask: 0,
+        // TODO: These are probably wrong?
+        let location = match (is_cpu_read, is_cpu_write) {
+            (true, true) => MemoryLocation::CpuToGpu,
+            (true, false) => MemoryLocation::GpuToCpu,
+            (false, true) => MemoryLocation::CpuToGpu,
+            (false, false) => MemoryLocation::GpuOnly,
         };
 
-        let hr = self.raw.CreateCommittedResource(
-            &heap_properties,
-            if self.private_caps.heap_create_not_zeroed {
-                D3D12_HEAP_FLAG_CREATE_NOT_ZEROED
-            } else {
-                d3d12::D3D12_HEAP_FLAG_NONE
-            },
+        let mut allocator = self.mem_allocator.lock();
+
+        let allocation_desc = AllocationCreateDesc::from_winapi_d3d12_resource_desc(
+            allocator.device().as_winapi(),
+            &raw_desc,
+            "Example allocation",
+            location,
+        );
+
+        // TODO: Save this allocation for freeing later
+
+        let allocation = allocator.allocate(&allocation_desc).unwrap();
+
+        // let is_cpu_read = desc.usage.contains(crate::BufferUses::MAP_READ);
+        // let is_cpu_write = desc.usage.contains(crate::BufferUses::MAP_WRITE);
+
+        // let heap_properties = d3d12::D3D12_HEAP_PROPERTIES {
+        //     Type: d3d12::D3D12_HEAP_TYPE_CUSTOM,
+        //     CPUPageProperty: if is_cpu_read {
+        //         d3d12::D3D12_CPU_PAGE_PROPERTY_WRITE_BACK
+        //     } else if is_cpu_write {
+        //         d3d12::D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE
+        //     } else {
+        //         d3d12::D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE
+        //     },
+        //     MemoryPoolPreference: match self.private_caps.memory_architecture {
+        //         super::MemoryArchitecture::NonUnified if !is_cpu_read && !is_cpu_write => {
+        //             d3d12::D3D12_MEMORY_POOL_L1
+        //         }
+        //         _ => d3d12::D3D12_MEMORY_POOL_L0,
+        //     },
+        //     CreationNodeMask: 0,
+        //     VisibleNodeMask: 0,
+        // };
+
+        // Unsafe
+        let hr = self.raw.CreatePlacedResource(
+            allocation.heap().as_winapi() as *mut _,
+            allocation.offset(),
             &raw_desc,
             d3d12::D3D12_RESOURCE_STATE_COMMON,
             ptr::null(),
@@ -397,9 +439,14 @@ impl crate::Device<super::Api> for super::Device {
             resource.SetName(cwstr.as_ptr());
         }
 
-        Ok(super::Buffer { resource, size })
+        Ok(super::Buffer {
+            resource,
+            allocation: Some(allocation),
+        })
     }
     unsafe fn destroy_buffer(&self, buffer: super::Buffer) {
+        // TODO: Handle this result
+        self.mem_allocator.lock().free(buffer.allocation.unwrap());
         buffer.resource.destroy();
     }
     unsafe fn map_buffer(
@@ -408,16 +455,18 @@ impl crate::Device<super::Api> for super::Device {
         range: crate::MemoryRange,
     ) -> Result<crate::BufferMapping, crate::DeviceError> {
         let mut ptr = ptr::null_mut();
+
         let hr = (*buffer.resource).Map(0, ptr::null(), &mut ptr);
         hr.into_device_result("Map buffer")?;
         Ok(crate::BufferMapping {
-            ptr: ptr::NonNull::new(ptr.offset(range.start as isize) as *mut _).unwrap(),
-            //TODO: double-check this. Documentation is a bit misleading -
+            ptr: ptr::NonNull::new(ptr.offset(range.start as isize) as *mut _).unwrap(), //TODO: double-check this. Documentation is a bit misleading -
             // it implies that Map/Unmap is needed to invalidate/flush memory.
             is_coherent: true,
         })
     }
     unsafe fn unmap_buffer(&self, buffer: &super::Buffer) -> Result<(), crate::DeviceError> {
+        // TODO: This
+        // buffer.allocation.unwrap().
         (*buffer.resource).Unmap(0, ptr::null());
         Ok(())
     }
@@ -430,7 +479,7 @@ impl crate::Device<super::Api> for super::Device {
     ) -> Result<super::Texture, crate::DeviceError> {
         let mut resource = native::Resource::null();
 
-        let raw_desc = d3d12::D3D12_RESOURCE_DESC {
+        let raw_desc = D3D12_RESOURCE_DESC {
             Dimension: conv::map_texture_dimension(desc.dimension),
             Alignment: 0,
             Width: desc.size.width as u64,
@@ -459,30 +508,54 @@ impl crate::Device<super::Api> for super::Device {
             Flags: conv::map_texture_usage_to_resource_flags(desc.usage),
         };
 
-        let heap_properties = d3d12::D3D12_HEAP_PROPERTIES {
-            Type: d3d12::D3D12_HEAP_TYPE_CUSTOM,
-            CPUPageProperty: d3d12::D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE,
-            MemoryPoolPreference: match self.private_caps.memory_architecture {
-                super::MemoryArchitecture::NonUnified => d3d12::D3D12_MEMORY_POOL_L1,
-                super::MemoryArchitecture::Unified { .. } => d3d12::D3D12_MEMORY_POOL_L0,
-            },
-            CreationNodeMask: 0,
-            VisibleNodeMask: 0,
-        };
+        // TODO: 99% sure this is wrong.
+        let location = MemoryLocation::GpuOnly;
 
-        let hr = self.raw.CreateCommittedResource(
-            &heap_properties,
-            if self.private_caps.heap_create_not_zeroed {
-                D3D12_HEAP_FLAG_CREATE_NOT_ZEROED
-            } else {
-                d3d12::D3D12_HEAP_FLAG_NONE
-            },
+        // let heap_properties = d3d12::D3D12_HEAP_PROPERTIES {
+        //     Type: d3d12::D3D12_HEAP_TYPE_CUSTOM,
+        //     CPUPageProperty: d3d12::D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE,
+        //     MemoryPoolPreference: match self.private_caps.memory_architecture {
+        //         super::MemoryArchitecture::NonUnified => d3d12::D3D12_MEMORY_POOL_L1,
+        //         super::MemoryArchitecture::Unified { .. } => d3d12::D3D12_MEMORY_POOL_L0,
+        //     },
+        //     CreationNodeMask: 0,
+        //     VisibleNodeMask: 0,
+        // };
+
+        let mut allocator = self.mem_allocator.lock();
+
+        let allocation_desc = AllocationCreateDesc::from_winapi_d3d12_resource_desc(
+            allocator.device().as_winapi(),
+            &raw_desc,
+            "Example allocation",
+            location,
+        );
+
+        let allocation = allocator.allocate(&allocation_desc).unwrap();
+
+        let hr = self.raw.CreatePlacedResource(
+            allocation.heap().as_winapi() as *mut _,
+            allocation.offset(),
             &raw_desc,
             d3d12::D3D12_RESOURCE_STATE_COMMON,
-            ptr::null(), // clear value
+            ptr::null(),
             &d3d12::ID3D12Resource::uuidof(),
             resource.mut_void(),
         );
+
+        // let hr = self.raw.CreateCommittedResource(
+        //     &heap_properties,
+        //     if self.private_caps.heap_create_not_zeroed {
+        //         D3D12_HEAP_FLAG_CREATE_NOT_ZEROED
+        //     } else {
+        //         d3d12::D3D12_HEAP_FLAG_NONE
+        //     },
+        //     &raw_desc,
+        //     d3d12::D3D12_RESOURCE_STATE_COMMON,
+        //     ptr::null(), // clear value
+        //     &d3d12::ID3D12Resource::uuidof(),
+        //     resource.mut_void(),
+        // );
 
         hr.into_device_result("Texture creation")?;
         if let Some(label) = desc.label {
@@ -492,6 +565,8 @@ impl crate::Device<super::Api> for super::Device {
 
         Ok(super::Texture {
             resource,
+            drop_guard: None,
+            allocation: Some(allocation),
             format: desc.format,
             dimension: desc.dimension,
             size: desc.size,
@@ -500,7 +575,14 @@ impl crate::Device<super::Api> for super::Device {
         })
     }
     unsafe fn destroy_texture(&self, texture: super::Texture) {
-        texture.resource.destroy();
+        if texture.drop_guard.is_none() {
+            texture.resource.Release();
+            // self.shared.raw.destroy_image(texture.raw, None);
+        }
+        if let Some(alloc) = texture.allocation {
+            self.mem_allocator.lock().free(alloc);
+        }
+        // texture.resource.destroy();
     }
 
     unsafe fn create_texture_view(
