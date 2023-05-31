@@ -135,7 +135,8 @@ wgpu-core = { path = "./wgpu-core" }
 wgpu-types = { path = "./wgpu-types" }
 
 [patch."https://github.com/gfx-rs/naga"]
-#naga = { path = "../naga" }
+# naga = { path = "../naga" }
+naga = { git = "https://github.com/Elabajaba/naga.git", branch = "hlsl-packing" }
 
 [patch."https://github.com/zakarumych/gpu-descriptor"]
 #gpu-descriptor = { path = "../gpu-descriptor/gpu-descriptor" }

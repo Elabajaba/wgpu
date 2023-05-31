@@ -1547,7 +1547,7 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.12.0"
-source = "git+https://github.com/gfx-rs/naga?rev=b99d58ea435090e561377949f428bce2c18451bb#b99d58ea435090e561377949f428bce2c18451bb"
+source = "git+https://github.com/Elabajaba/naga.git?branch=hlsl-packing#fd382d5a31db36ff3de0ad08315259df1982fc8a"
 dependencies = [
  "bit-set",
  "bitflags 1.3.2",

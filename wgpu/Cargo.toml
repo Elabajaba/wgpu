@@ -85,6 +85,9 @@ test = true
 name = "stencil-triangles"
 test = true
 
+[[example]]
+name = "naga-valid"
+
 [features]
 default = ["wgsl"]
 # Apply run-time checks, even in release builds. These are in addition
