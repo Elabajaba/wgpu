@@ -1,7 +1,7 @@
 @group(0) @binding(0)
-var<storage, read> v_indices: vec4<f32>; // this is used as both input and output for convenience
-@group(0) @binding(1)
 var<storage, read_write> v_out: u32;
+@group(0) @binding(1)
+var<storage, read_write> v_indices: vec4<f32>; // this is used as both input and output for convenience
 
 @compute
 @workgroup_size(1)
