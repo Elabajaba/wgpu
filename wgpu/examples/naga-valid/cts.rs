@@ -173,7 +173,7 @@ pub mod unpacking {
             0xc001c001,
             [NEG_HALF_BOUNDS_2X16_SNORM, NEG_HALF_BOUNDS_2X16_SNORM],
         ),
-        (0x0000c001, [NEG_HALF_BOUNDS_2X16_SNORM, ZERO_BOUNDS]),    // Error here
+        (0x0000c001, [NEG_HALF_BOUNDS_2X16_SNORM, ZERO_BOUNDS]), // Error here
         (0xc0010000, [ZERO_BOUNDS, NEG_HALF_BOUNDS_2X16_SNORM]),
     ];
 
@@ -230,10 +230,382 @@ pub mod unpacking {
         (0x49004900, [10.0, 10.0]),
         (0xc900c900, [-10.0, -10.0]),
         // // f16 subnormals
-        // { input: 0x000003ff, expected: [[0, kValue.f16.subnormal.positive.max], 0] },
-        // { input: 0x000083ff, expected: [[kValue.f16.subnormal.negative.min, 0], 0] },
+        // (0x000003ff, [[0, kValue.f16.subnormal.positive.max], 0] },
+        // (0x000083ff, [[kValue.f16.subnormal.negative.min, 0], 0] },
         // // f16 out of bounds
-        // { input: 0x7c000000, expected: [kAnyBounds, kAnyBounds] },
-        // { input: 0xffff0000, expected: [kAnyBounds, kAnyBounds] },
+        // (0x7c000000, [kAnyBounds, kAnyBounds] },
+        // (0xffff0000, [kAnyBounds, kAnyBounds] },
+    ];
+}
+
+pub mod insert {
+    // https://github.com/gpuweb/cts/blob/main/src/webgpu/shader/execution/expression/call/builtin/insertBits.spec.ts
+
+    // TODO : Overflow tests
+    #[derive(Debug, Clone, Copy)]
+    pub enum Things {
+        Single(u32),
+        Pattern([u32; 4]),
+    }
+
+    impl Things {
+        pub fn into_pat(&self) -> Things {
+            match self {
+                Self::Single(v) => Things::Pattern([*v; 4]),
+                Self::Pattern(_) => *self,
+            }
+        }
+    }
+
+    impl Into<u32> for Things {
+        fn into(self: Things) -> u32 {
+            match self {
+                Things::Single(v) => v,
+                Things::Pattern(_) => panic!("Cannot convert pattern to single value"),
+            }
+        }
+    }
+
+    impl PartialEq for Things {
+        fn eq(&self, other: &Self) -> bool {
+            match (self, other) {
+                (Self::Single(l0), Self::Single(r0)) => l0 == r0,
+                (Self::Pattern(l0), Self::Pattern(r0)) => l0 == r0,
+                (Self::Single(l0), Self::Pattern(r0)) => [*l0, *l0, *l0, *l0] == *r0,
+                (Self::Pattern(l0), Self::Single(r0)) => *l0 == [*r0, *r0, *r0, *r0],
+                _ => false,
+            }
+        }
+    }
+
+    impl Eq for Things {}
+
+    impl PartialEq<[u32;4]> for Things {
+        fn eq(&self, other: &[u32;4]) -> bool {
+            match self {
+                Self::Single(l0) => [*l0; 4] == *other,
+                Self::Pattern(l0) => l0 == other,
+            }
+        }
+    }
+
+    pub const ALL_1: Things = Things::Single(0b11111111111111111111111111111111);
+    pub const ALL_0: Things = Things::Single(0b00000000000000000000000000000000);
+    pub const LOW_1: Things = Things::Single(0b00000000000000000000000000000001);
+    pub const LOW_0: Things = Things::Single(0b11111111111111111111111111111110);
+    pub const HIGH_1: Things = Things::Single(0b10000000000000000000000000000000);
+    pub const HIGH_0: Things = Things::Single(0b01111111111111111111111111111111);
+    pub const PATTERN: Things = Things::Pattern([
+        0b10001001010100100010010100100010,
+        0b11001110001100111000110011100011,
+        0b10101010101010101010101010101010,
+        0b01010101010101010101010101010101,
+    ]);
+
+    pub const BASIC_CASES: [([Things; 4], Things); 15] = [
+        ([ALL_0, ALL_0, Things::Single(0), Things::Single(32)], ALL_0),
+        ([ALL_0, ALL_0, Things::Single(1), Things::Single(10)], ALL_0),
+        ([ALL_0, ALL_0, Things::Single(2), Things::Single(5)], ALL_0),
+        ([ALL_0, ALL_0, Things::Single(0), Things::Single(1)], ALL_0),
+        ([ALL_0, ALL_0, Things::Single(31), Things::Single(1)], ALL_0),
+        ([ALL_0, ALL_1, Things::Single(0), Things::Single(32)], ALL_1),
+        ([ALL_1, ALL_0, Things::Single(0), Things::Single(32)], ALL_0),
+        ([ALL_0, ALL_1, Things::Single(0), Things::Single(1)], LOW_1),
+        ([ALL_1, ALL_0, Things::Single(0), Things::Single(1)], LOW_0),
+        (
+            [ALL_0, ALL_1, Things::Single(31), Things::Single(1)],
+            HIGH_1,
+        ),
+        (
+            [ALL_1, ALL_0, Things::Single(31), Things::Single(1)],
+            HIGH_0,
+        ),
+        (
+            [ALL_0, ALL_1, Things::Single(1), Things::Single(10)],
+            Things::Single(0b00000000000000000000011111111110),
+        ),
+        (
+            [ALL_1, ALL_0, Things::Single(1), Things::Single(10)],
+            Things::Single(0b11111111111111111111100000000001),
+        ),
+        (
+            [ALL_0, ALL_1, Things::Single(2), Things::Single(5)],
+            Things::Single(0b00000000000000000000000001111100),
+        ),
+        (
+            [ALL_1, ALL_0, Things::Single(2), Things::Single(5)],
+            Things::Single(0b11111111111111111111111110000011),
+        ),
+    ];
+
+    // Patterns
+    pub const PATTERN_CASES: [([Things; 4], Things); 34] = [
+        (
+            [ALL_0, PATTERN, Things::Single(0), Things::Single(32)],
+            PATTERN,
+        ),
+        (
+            [ALL_1, PATTERN, Things::Single(0), Things::Single(32)],
+            PATTERN,
+        ),
+        (
+            [ALL_0, PATTERN, Things::Single(1), Things::Single(31)],
+            Things::Pattern([
+                0b00010010101001000100101001000100,
+                0b10011100011001110001100111000110,
+                0b01010101010101010101010101010100,
+                0b10101010101010101010101010101010,
+            ]),
+        ),
+        (
+            [ALL_1, PATTERN, Things::Single(1), Things::Single(31)],
+            Things::Pattern([
+                0b00010010101001000100101001000101,
+                0b10011100011001110001100111000111,
+                0b01010101010101010101010101010101,
+                0b10101010101010101010101010101011,
+            ]),
+        ),
+        (
+            [ALL_0, PATTERN, Things::Single(14), Things::Single(18)],
+            Things::Pattern([
+                0b10001001010010001000000000000000,
+                0b11100011001110001100000000000000,
+                0b10101010101010101000000000000000,
+                0b01010101010101010100000000000000,
+            ]),
+        ),
+        (
+            [ALL_1, PATTERN, Things::Single(14), Things::Single(18)],
+            Things::Pattern([
+                0b10001001010010001011111111111111,
+                0b11100011001110001111111111111111,
+                0b10101010101010101011111111111111,
+                0b01010101010101010111111111111111,
+            ]),
+        ),
+        (
+            [ALL_0, PATTERN, Things::Single(14), Things::Single(7)],
+            Things::Pattern([
+                0b00000000000010001000000000000000,
+                0b00000000000110001100000000000000,
+                0b00000000000010101000000000000000,
+                0b00000000000101010100000000000000,
+            ]),
+        ),
+        (
+            [ALL_1, PATTERN, Things::Single(14), Things::Single(7)],
+            Things::Pattern([
+                0b11111111111010001011111111111111,
+                0b11111111111110001111111111111111,
+                0b11111111111010101011111111111111,
+                0b11111111111101010111111111111111,
+            ]),
+        ),
+        (
+            [ALL_0, PATTERN, Things::Single(14), Things::Single(4)],
+            Things::Pattern([
+                0b00000000000000001000000000000000,
+                0b00000000000000001100000000000000,
+                0b00000000000000101000000000000000,
+                0b00000000000000010100000000000000,
+            ]),
+        ),
+        (
+            [ALL_1, PATTERN, Things::Single(14), Things::Single(4)],
+            Things::Pattern([
+                0b11111111111111001011111111111111,
+                0b11111111111111001111111111111111,
+                0b11111111111111101011111111111111,
+                0b11111111111111010111111111111111,
+            ]),
+        ),
+        (
+            [ALL_0, PATTERN, Things::Single(14), Things::Single(3)],
+            Things::Pattern([
+                0b00000000000000001000000000000000,
+                0b00000000000000001100000000000000,
+                0b00000000000000001000000000000000,
+                0b00000000000000010100000000000000,
+            ]),
+        ),
+        (
+            [ALL_1, PATTERN, Things::Single(14), Things::Single(3)],
+            Things::Pattern([
+                0b11111111111111101011111111111111,
+                0b11111111111111101111111111111111,
+                0b11111111111111101011111111111111,
+                0b11111111111111110111111111111111,
+            ]),
+        ),
+        (
+            [ALL_0, PATTERN, Things::Single(18), Things::Single(3)],
+            Things::Pattern([
+                0b00000000000010000000000000000000,
+                0b00000000000011000000000000000000,
+                0b00000000000010000000000000000000,
+                0b00000000000101000000000000000000,
+            ]),
+        ),
+        (
+            [ALL_1, PATTERN, Things::Single(18), Things::Single(3)],
+            Things::Pattern([
+                0b11111111111010111111111111111111,
+                0b11111111111011111111111111111111,
+                0b11111111111010111111111111111111,
+                0b11111111111101111111111111111111,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_0, Things::Single(1), Things::Single(31)],
+            Things::Pattern([
+                0b00000000000000000000000000000000,
+                0b00000000000000000000000000000001,
+                0b00000000000000000000000000000000,
+                0b00000000000000000000000000000001,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(1), Things::Single(31)],
+            Things::Pattern([
+                0b11111111111111111111111111111110,
+                0b11111111111111111111111111111111,
+                0b11111111111111111111111111111110,
+                0b11111111111111111111111111111111,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_0, Things::Single(14), Things::Single(18)],
+            Things::Pattern([
+                0b00000000000000000010010100100010,
+                0b00000000000000000000110011100011,
+                0b00000000000000000010101010101010,
+                0b00000000000000000001010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(14), Things::Single(18)],
+            Things::Pattern([
+                0b11111111111111111110010100100010,
+                0b11111111111111111100110011100011,
+                0b11111111111111111110101010101010,
+                0b11111111111111111101010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_0, Things::Single(14), Things::Single(7)],
+            Things::Pattern([
+                0b10001001010000000010010100100010,
+                0b11001110001000000000110011100011,
+                0b10101010101000000010101010101010,
+                0b01010101010000000001010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(14), Things::Single(7)],
+            Things::Pattern([
+                0b10001001010111111110010100100010,
+                0b11001110001111111100110011100011,
+                0b10101010101111111110101010101010,
+                0b01010101010111111101010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_0, Things::Single(14), Things::Single(4)],
+            Things::Pattern([
+                0b10001001010100000010010100100010,
+                0b11001110001100000000110011100011,
+                0b10101010101010000010101010101010,
+                0b01010101010101000001010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(14), Things::Single(4)],
+            Things::Pattern([
+                0b10001001010100111110010100100010,
+                0b11001110001100111100110011100011,
+                0b10101010101010111110101010101010,
+                0b01010101010101111101010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_0, Things::Single(14), Things::Single(3)],
+            Things::Pattern([
+                0b10001001010100100010010100100010,
+                0b11001110001100100000110011100011,
+                0b10101010101010100010101010101010,
+                0b01010101010101000001010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(14), Things::Single(3)],
+            Things::Pattern([
+                0b10001001010100111110010100100010,
+                0b11001110001100111100110011100011,
+                0b10101010101010111110101010101010,
+                0b01010101010101011101010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_0, Things::Single(18), Things::Single(3)],
+            Things::Pattern([
+                0b10001001010000100010010100100010,
+                0b11001110001000111000110011100011,
+                0b10101010101000101010101010101010,
+                0b01010101010000010101010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(18), Things::Single(3)],
+            Things::Pattern([
+                0b10001001010111100010010100100010,
+                0b11001110001111111000110011100011,
+                0b10101010101111101010101010101010,
+                0b01010101010111010101010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, PATTERN, Things::Single(18), Things::Single(3)],
+            Things::Pattern([
+                0b10001001010010100010010100100010,
+                0b11001110001011111000110011100011,
+                0b10101010101010101010101010101010,
+                0b01010101010101010101010101010101,
+            ]),
+        ),
+        (
+            [PATTERN, PATTERN, Things::Single(14), Things::Single(7)],
+            Things::Pattern([
+                0b10001001010010001010010100100010,
+                0b11001110001110001100110011100011,
+                0b10101010101010101010101010101010,
+                0b01010101010101010101010101010101,
+            ]),
+        ),
+        // Zero count
+        (
+            [PATTERN, ALL_1, Things::Single(0), Things::Single(0)],
+            PATTERN,
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(1), Things::Single(0)],
+            PATTERN,
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(2), Things::Single(0)],
+            PATTERN,
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(31), Things::Single(0)],
+            PATTERN,
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(32), Things::Single(0)],
+            PATTERN,
+        ),
+        (
+            [PATTERN, ALL_1, Things::Single(0), Things::Single(0)],
+            PATTERN,
+        ),
     ];
 }
