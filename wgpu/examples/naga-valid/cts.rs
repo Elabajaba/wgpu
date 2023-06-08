@@ -240,69 +240,17 @@ pub mod unpacking {
 
 pub mod insert {
     // https://github.com/gpuweb/cts/blob/main/src/webgpu/shader/execution/expression/call/builtin/insertBits.spec.ts
+    use super::helpers::*;
 
-    // TODO : Overflow tests
-    #[derive(Debug, Clone, Copy)]
-    pub enum Things {
-        Single(u32),
-        Pattern([u32; 4]),
-    }
-
-    impl Things {
-        pub fn into_pat(&self) -> Things {
-            match self {
-                Self::Single(v) => Things::Pattern([*v; 4]),
-                Self::Pattern(_) => *self,
-            }
-        }
-    }
-
-    impl Into<u32> for Things {
-        fn into(self: Things) -> u32 {
-            match self {
-                Things::Single(v) => v,
-                Things::Pattern(_) => panic!("Cannot convert pattern to single value"),
-            }
-        }
-    }
-
-    impl PartialEq for Things {
-        fn eq(&self, other: &Self) -> bool {
-            match (self, other) {
-                (Self::Single(l0), Self::Single(r0)) => l0 == r0,
-                (Self::Pattern(l0), Self::Pattern(r0)) => l0 == r0,
-                (Self::Single(l0), Self::Pattern(r0)) => [*l0, *l0, *l0, *l0] == *r0,
-                (Self::Pattern(l0), Self::Single(r0)) => *l0 == [*r0, *r0, *r0, *r0],
-                _ => false,
-            }
-        }
-    }
-
-    impl Eq for Things {}
-
-    impl PartialEq<[u32;4]> for Things {
-        fn eq(&self, other: &[u32;4]) -> bool {
-            match self {
-                Self::Single(l0) => [*l0; 4] == *other,
-                Self::Pattern(l0) => l0 == other,
-            }
-        }
-    }
-
-    pub const ALL_1: Things = Things::Single(0b11111111111111111111111111111111);
-    pub const ALL_0: Things = Things::Single(0b00000000000000000000000000000000);
-    pub const LOW_1: Things = Things::Single(0b00000000000000000000000000000001);
-    pub const LOW_0: Things = Things::Single(0b11111111111111111111111111111110);
-    pub const HIGH_1: Things = Things::Single(0b10000000000000000000000000000000);
-    pub const HIGH_0: Things = Things::Single(0b01111111111111111111111111111111);
-    pub const PATTERN: Things = Things::Pattern([
+    const PATTERN: Things = Things::Pattern([
         0b10001001010100100010010100100010,
         0b11001110001100111000110011100011,
         0b10101010101010101010101010101010,
         0b01010101010101010101010101010101,
     ]);
 
-    pub const BASIC_CASES: [([Things; 4], Things); 15] = [
+    // TODO : Overflow tests
+    pub const BASIC_CASES: [([Things; 4], Things); 16] = [
         ([ALL_0, ALL_0, Things::Single(0), Things::Single(32)], ALL_0),
         ([ALL_0, ALL_0, Things::Single(1), Things::Single(10)], ALL_0),
         ([ALL_0, ALL_0, Things::Single(2), Things::Single(5)], ALL_0),
@@ -312,6 +260,7 @@ pub mod insert {
         ([ALL_1, ALL_0, Things::Single(0), Things::Single(32)], ALL_0),
         ([ALL_0, ALL_1, Things::Single(0), Things::Single(1)], LOW_1),
         ([ALL_1, ALL_0, Things::Single(0), Things::Single(1)], LOW_0),
+        ([ALL_0, ALL_1, Things::Single(0), Things::Single(0)], ALL_0),
         (
             [ALL_0, ALL_1, Things::Single(31), Things::Single(1)],
             HIGH_1,
@@ -608,4 +557,246 @@ pub mod insert {
             PATTERN,
         ),
     ];
+}
+
+pub mod extract {
+    use super::helpers::*;
+
+    pub const PATTERN: Things = Things::Pattern([
+        0b00000000000111011100000000000000,
+        0b11111111111000000011111111111111,
+        0b00000000010101010101000000000000,
+        0b00000000001010101010100000000000,
+    ]);
+
+    pub const BASIC_CASES_UNSIGNED: [([Things; 3], Things); 14] = [
+        ([ALL_0, Things::Single(0), Things::Single(32)], ALL_0),
+        ([ALL_0, Things::Single(1), Things::Single(10)], ALL_0),
+        ([ALL_0, Things::Single(2), Things::Single(5)], ALL_0),
+        ([ALL_0, Things::Single(0), Things::Single(1)], ALL_0),
+        ([ALL_0, Things::Single(31), Things::Single(1)], ALL_0),
+        ([ALL_1, Things::Single(0), Things::Single(32)], ALL_1),
+        (
+            [ALL_1, Things::Single(1), Things::Single(10)],
+            Things::Single(0b00000000000000000000001111111111),
+        ),
+        (
+            [ALL_1, Things::Single(2), Things::Single(5)],
+            Things::Single(0b00000000000000000000000000011111),
+        ),
+        ([ALL_1, Things::Single(0), Things::Single(1)], LOW_1),
+        ([ALL_1, Things::Single(31), Things::Single(1)], LOW_1),
+        // Zero count
+        ([ALL_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([ALL_0, Things::Single(0), Things::Single(0)], ALL_0),
+        ([LOW_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([HIGH_1, Things::Single(31), Things::Single(0)], ALL_0),
+    ];
+
+    pub const PATTERN_CASES_UNSIGNED: [([Things; 3], Things); 14] = [
+        // Patterns
+        ([PATTERN, Things::Single(0), Things::Single(32)], PATTERN),
+        (
+            [PATTERN, Things::Single(1), Things::Single(31)],
+            Things::Pattern([
+                0b00000000000011101110000000000000,
+                0b01111111111100000001111111111111,
+                0b00000000001010101010100000000000,
+                0b00000000000101010101010000000000,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(18)],
+            Things::Pattern([
+                0b00000000000000000000000001110111,
+                0b00000000000000111111111110000000,
+                0b00000000000000000000000101010101,
+                0b00000000000000000000000010101010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(7)],
+            Things::Pattern([
+                0b00000000000000000000000001110111,
+                0b00000000000000000000000000000000,
+                0b00000000000000000000000001010101,
+                0b00000000000000000000000000101010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(4)],
+            Things::Pattern([
+                0b00000000000000000000000000000111,
+                0b00000000000000000000000000000000,
+                0b00000000000000000000000000000101,
+                0b00000000000000000000000000001010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(3)],
+            Things::Pattern([
+                0b00000000000000000000000000000111,
+                0b00000000000000000000000000000000,
+                0b00000000000000000000000000000101,
+                0b00000000000000000000000000000010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(18), Things::Single(3)],
+            Things::Pattern([
+                0b00000000000000000000000000000111,
+                0b00000000000000000000000000000000,
+                0b00000000000000000000000000000101,
+                0b00000000000000000000000000000010,
+            ]),
+        ),
+        ([LOW_1, Things::Single(0), Things::Single(1)], LOW_1),
+        ([HIGH_1, Things::Single(31), Things::Single(1)], LOW_1),
+        ([ALL_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([ALL_0, Things::Single(0), Things::Single(0)], ALL_0),
+        ([LOW_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([HIGH_1, Things::Single(31), Things::Single(0)], ALL_0),
+        ([PATTERN, Things::Single(0), Things::Single(0)], ALL_0),
+    ];
+
+    pub const BASIC_CASES_SIGNED: [([Things; 3], Things); 16] = [
+        ([ALL_0, Things::Single(0), Things::Single(32)], ALL_0),
+        ([ALL_0, Things::Single(1), Things::Single(10)], ALL_0),
+        ([ALL_0, Things::Single(2), Things::Single(5)], ALL_0),
+        ([ALL_0, Things::Single(0), Things::Single(1)], ALL_0),
+        ([ALL_0, Things::Single(31), Things::Single(1)], ALL_0),
+        ([ALL_1, Things::Single(0), Things::Single(32)], ALL_1),
+        ([ALL_1, Things::Single(1), Things::Single(10)], ALL_1),
+        ([ALL_1, Things::Single(2), Things::Single(5)], ALL_1),
+        ([ALL_1, Things::Single(0), Things::Single(1)], ALL_1),
+        ([ALL_1, Things::Single(31), Things::Single(1)], ALL_1),
+        ([LOW_1, Things::Single(0), Things::Single(1)], ALL_1),
+        ([HIGH_1, Things::Single(31), Things::Single(1)], ALL_1),
+        ([ALL_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([ALL_0, Things::Single(0), Things::Single(0)], ALL_0),
+        ([LOW_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([HIGH_1, Things::Single(31), Things::Single(0)], ALL_0),
+    ];
+
+    pub const PATTERN_CASES_SIGNED: [([Things; 3], Things); 14] = [
+        ([PATTERN, Things::Single(0), Things::Single(32)], PATTERN),
+        (
+            [PATTERN, Things::Single(1), Things::Single(31)],
+            Things::Pattern([
+                0b00000000000011101110000000000000,
+                0b11111111111100000001111111111111,
+                0b00000000001010101010100000000000,
+                0b00000000000101010101010000000000,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(18)],
+            Things::Pattern([
+                0b00000000000000000000000001110111,
+                0b11111111111111111111111110000000,
+                0b00000000000000000000000101010101,
+                0b00000000000000000000000010101010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(7)],
+            Things::Pattern([
+                0b11111111111111111111111111110111,
+                0b00000000000000000000000000000000,
+                0b11111111111111111111111111010101,
+                0b00000000000000000000000000101010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(4)],
+            Things::Pattern([
+                0b00000000000000000000000000000111,
+                0b00000000000000000000000000000000,
+                0b00000000000000000000000000000101,
+                0b11111111111111111111111111111010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(14), Things::Single(3)],
+            Things::Pattern([
+                0b11111111111111111111111111111111,
+                0b00000000000000000000000000000000,
+                0b11111111111111111111111111111101,
+                0b00000000000000000000000000000010,
+            ]),
+        ),
+        (
+            [PATTERN, Things::Single(18), Things::Single(3)],
+            Things::Pattern([
+                0b11111111111111111111111111111111,
+                0b00000000000000000000000000000000,
+                0b11111111111111111111111111111101,
+                0b00000000000000000000000000000010,
+            ]),
+        ),
+        ([LOW_1, Things::Single(0), Things::Single(1)], ALL_1),
+        ([HIGH_1, Things::Single(31), Things::Single(1)], ALL_1),
+        // Zero count
+        ([ALL_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([ALL_0, Things::Single(0), Things::Single(0)], ALL_0),
+        ([LOW_1, Things::Single(0), Things::Single(0)], ALL_0),
+        ([HIGH_1, Things::Single(31), Things::Single(0)], ALL_0),
+        ([PATTERN, Things::Single(0), Things::Single(0)], ALL_0),
+    ];
+}
+
+pub mod helpers {
+    #[derive(Debug, Clone, Copy)]
+    pub enum Things {
+        Single(u32),
+        Pattern([u32; 4]),
+    }
+
+    impl Things {
+        pub fn into_pat(&self) -> Things {
+            match self {
+                Self::Single(v) => Things::Pattern([*v; 4]),
+                Self::Pattern(_) => *self,
+            }
+        }
+    }
+
+    impl Into<u32> for Things {
+        fn into(self: Things) -> u32 {
+            match self {
+                Things::Single(v) => v,
+                Things::Pattern(_) => panic!("Cannot convert PATTERN to single value"),
+            }
+        }
+    }
+
+    impl PartialEq for Things {
+        fn eq(&self, other: &Self) -> bool {
+            match (self, other) {
+                (Self::Single(l0), Self::Single(r0)) => l0 == r0,
+                (Self::Pattern(l0), Self::Pattern(r0)) => l0 == r0,
+                (Self::Single(l0), Self::Pattern(r0)) => [*l0, *l0, *l0, *l0] == *r0,
+                (Self::Pattern(l0), Self::Single(r0)) => *l0 == [*r0, *r0, *r0, *r0],
+                _ => false,
+            }
+        }
+    }
+
+    impl Eq for Things {}
+
+    impl PartialEq<[u32; 4]> for Things {
+        fn eq(&self, other: &[u32; 4]) -> bool {
+            match self {
+                Self::Single(l0) => [*l0; 4] == *other,
+                Self::Pattern(l0) => l0 == other,
+            }
+        }
+    }
+
+    pub const ALL_1: Things = Things::Single(0b11111111111111111111111111111111);
+    pub const ALL_0: Things = Things::Single(0b00000000000000000000000000000000);
+    pub const LOW_1: Things = Things::Single(0b00000000000000000000000000000001);
+    pub const LOW_0: Things = Things::Single(0b11111111111111111111111111111110);
+    pub const HIGH_1: Things = Things::Single(0b10000000000000000000000000000000);
+    pub const HIGH_0: Things = Things::Single(0b01111111111111111111111111111111);
 }
