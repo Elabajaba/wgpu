@@ -9,7 +9,9 @@ use crate::{
 };
 
 use arrayvec::ArrayVec;
-use parking_lot::Mutex;
+// // use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+
 use smallvec::SmallVec;
 use std::{
     any::Any,

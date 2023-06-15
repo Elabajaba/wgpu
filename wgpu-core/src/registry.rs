@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+// use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
+use tracing_mutex::parkinglot::TracingRwLockReadGuard as RwLockReadGuard;
+use tracing_mutex::parkinglot::TracingRwLockWriteGuard as RwLockWriteGuard;
 use wgt::Backend;
 
 use crate::{

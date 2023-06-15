@@ -47,7 +47,9 @@ use ash::{
     extensions::{ext, khr},
     vk,
 };
-use parking_lot::{Mutex, RwLock};
+// use parking_lot::{Mutex, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 
 const MILLIS_TO_NANOS: u64 = 1_000_000;
 const MAX_TOTAL_ATTACHMENTS: usize = crate::MAX_COLOR_ATTACHMENTS * 2 + 1;

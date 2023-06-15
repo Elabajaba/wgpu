@@ -26,7 +26,8 @@ use std::{
 };
 
 use context::{Context, DeviceRequest, DynContext, ObjectId};
-use parking_lot::Mutex;
+// // use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 
 pub use wgt::{
     AdapterInfo, AddressMode, AstcBlock, AstcChannel, Backend, Backends, BindGroupLayoutEntry,

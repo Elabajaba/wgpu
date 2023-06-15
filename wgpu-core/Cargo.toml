@@ -64,6 +64,7 @@ ron = { version = "0.8", optional = true }
 serde = { version = "1", features = ["serde_derive"], optional = true }
 smallvec = "1"
 thiserror = "1"
+tracing-mutex = { version = "0.2.1", features = ["parkinglot"] }
 
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"

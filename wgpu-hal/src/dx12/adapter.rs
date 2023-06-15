@@ -2,7 +2,8 @@ use crate::{
     auxil::{self, dxgi::result::HResult as _},
     dx12::SurfaceTarget,
 };
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use std::{mem, ptr, sync::Arc, thread};
 use winapi::{
     shared::{dxgi, dxgi1_2, minwindef::DWORD, windef, winerror},

@@ -31,7 +31,10 @@ use crate::{
 
 use arrayvec::ArrayVec;
 use hal::{CommandEncoder as _, Device as _};
-use parking_lot::{Mutex, MutexGuard, RwLock};
+// use parking_lot::{Mutex, MutexGuard, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingMutexGuard as MutexGuard;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 use smallvec::SmallVec;
 use thiserror::Error;
 use wgt::{TextureFormat, TextureSampleType, TextureViewDimension};

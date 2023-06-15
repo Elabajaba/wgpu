@@ -1,5 +1,8 @@
 use glow::HasContext;
-use parking_lot::{Mutex, MutexGuard, RwLock};
+// use parking_lot::{Mutex, MutexGuard, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingMutexGuard as MutexGuard;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 
 use std::{ffi, os::raw, ptr, sync::Arc, time::Duration};
 

@@ -18,7 +18,8 @@ use crate::{
 };
 use smallvec::SmallVec;
 
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use thiserror::Error;
 
 use std::{mem, sync::Arc};

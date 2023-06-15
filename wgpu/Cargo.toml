@@ -158,6 +158,7 @@ serde = { workspace = true, features = ["derive"], optional = true }
 smallvec.workspace = true
 static_assertions.workspace = true
 cfg-if.workspace = true
+tracing-mutex = { version = "0.2.1", features = ["parkinglot"] }
 
 [dev-dependencies]
 bitflags.workspace = true

@@ -1,7 +1,8 @@
 use crate::auxil::{self, dxgi::result::HResult as _};
 
 use super::{conv, descriptor, view};
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use std::{ffi, mem, num::NonZeroU32, ptr, sync::Arc};
 use winapi::{
     shared::{dxgiformat, dxgitype, minwindef::BOOL, winerror},

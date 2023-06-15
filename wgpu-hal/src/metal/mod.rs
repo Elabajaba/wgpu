@@ -34,7 +34,9 @@ use std::{
 
 use arrayvec::ArrayVec;
 use metal::foreign_types::ForeignTypeRef as _;
-use parking_lot::{Mutex, RwLock};
+// use parking_lot::{Mutex, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 
 #[derive(Clone)]
 pub struct Api;

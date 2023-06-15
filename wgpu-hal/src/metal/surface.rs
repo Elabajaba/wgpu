@@ -14,7 +14,9 @@ use objc::{
     runtime::{Class, Object, Sel, BOOL, NO, YES},
     sel, sel_impl,
 };
-use parking_lot::{Mutex, RwLock};
+// use parking_lot::{Mutex, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 
 #[cfg(target_os = "macos")]
 #[link(name = "QuartzCore", kind = "framework")]

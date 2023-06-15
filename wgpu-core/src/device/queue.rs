@@ -21,7 +21,9 @@ use crate::{
 };
 
 use hal::{CommandEncoder as _, Device as _, Queue as _};
-use parking_lot::{Mutex, RwLock};
+// use parking_lot::{Mutex, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 use smallvec::SmallVec;
 use std::{
     iter, mem, ptr,

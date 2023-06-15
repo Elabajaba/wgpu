@@ -37,7 +37,8 @@ use crate::{
 };
 
 use hal::CommandEncoder as _;
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use thiserror::Error;
 
 #[cfg(feature = "trace")]

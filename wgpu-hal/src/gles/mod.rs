@@ -87,7 +87,8 @@ use arrayvec::ArrayVec;
 use glow::HasContext;
 
 use naga::FastHashMap;
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use std::sync::atomic::{AtomicU32, AtomicU8};
 use std::{fmt, ops::Range, sync::Arc};
 

@@ -13,7 +13,9 @@ use crate::{
     Label, SubmissionIndex,
 };
 
-use parking_lot::{Mutex, RwLock};
+// use parking_lot::{Mutex, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 use smallvec::SmallVec;
 use thiserror::Error;
 

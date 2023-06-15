@@ -32,7 +32,8 @@ use crate::{
 };
 
 use hal::{Queue as _, Surface as _};
-use parking_lot::RwLock;
+// use parking_lot::RwLock;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 use thiserror::Error;
 use wgt::SurfaceStatus as Status;
 

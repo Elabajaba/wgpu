@@ -57,6 +57,7 @@ parking_lot = ">=0.11,<0.13"
 profiling = { version = "1", default-features = false }
 raw-window-handle = "0.5"
 thiserror = "1"
+tracing-mutex = { version = "0.2.1", features = ["parkinglot"] }
 
 # backends common
 arrayvec = "0.7"

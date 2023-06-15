@@ -11,7 +11,8 @@ use crate::{
     LabelHelpers, DOWNLEVEL_WARNING_MESSAGE,
 };
 
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use wgt::{Backend, Backends, PowerPreference};
 
 use hal::{Adapter as _, Instance as _};

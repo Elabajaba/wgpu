@@ -17,7 +17,9 @@ use crate::{
 };
 
 use hal::{CommandEncoder as _, Device as _};
-use parking_lot::RwLock;
+// use parking_lot::RwLock;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
+
 use smallvec::SmallVec;
 
 use wgt::{BufferAddress, TextureFormat};

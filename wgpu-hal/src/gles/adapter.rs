@@ -1,5 +1,6 @@
 use glow::HasContext;
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use std::sync::{atomic::AtomicU8, Arc};
 use wgt::AstcChannel;
 

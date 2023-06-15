@@ -47,7 +47,9 @@ mod view;
 use crate::auxil::{self, dxgi::result::HResult as _};
 
 use arrayvec::ArrayVec;
-use parking_lot::{Mutex, RwLock};
+// use parking_lot::{Mutex, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 use std::{ffi, fmt, mem, num::NonZeroU32, sync::Arc};
 use winapi::{
     shared::{dxgi, dxgi1_4, dxgitype, windef, winerror},

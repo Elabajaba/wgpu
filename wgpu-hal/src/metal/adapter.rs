@@ -1,6 +1,7 @@
 use metal::{MTLFeatureSet, MTLGPUFamily, MTLLanguageVersion, MTLReadWriteTextureTier};
 use objc::{class, msg_send, sel, sel_impl};
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use wgt::{AstcBlock, AstcChannel};
 
 use std::{sync::Arc, thread};

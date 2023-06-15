@@ -12,7 +12,8 @@ pub(crate) use allocation::{
 #[cfg(feature = "windows_rs")]
 mod allocation {
     use d3d12::WeakPtr;
-    use parking_lot::Mutex;
+    // use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
     use std::ptr;
     use wgt::assertions::StrictAssertUnwrapExt;
     use winapi::{
@@ -206,7 +207,8 @@ mod allocation {
 #[cfg(not(feature = "windows_rs"))]
 mod allocation {
     use d3d12::WeakPtr;
-    use parking_lot::Mutex;
+    // use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
     use std::ptr;
     use winapi::{
         um::{

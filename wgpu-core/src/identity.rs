@@ -1,4 +1,5 @@
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
 use wgt::Backend;
 
 use crate::{id, Epoch, Index};

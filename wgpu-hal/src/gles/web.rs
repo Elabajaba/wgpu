@@ -1,5 +1,7 @@
 use glow::HasContext;
-use parking_lot::{Mutex, RwLock};
+// use parking_lot::{Mutex, RwLock};
+use tracing_mutex::parkinglot::TracingMutex as Mutex;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 use wasm_bindgen::JsCast;
 
 use super::TextureFormatDesc;

@@ -9,7 +9,8 @@ use ash::{
     extensions::{ext, khr},
     vk,
 };
-use parking_lot::RwLock;
+// use parking_lot::RwLock;
+use tracing_mutex::parkinglot::TracingRwLock as RwLock;
 
 unsafe extern "system" fn debug_utils_messenger_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
