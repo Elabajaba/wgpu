@@ -5,7 +5,7 @@
  * one subresource, they have no selector.
 !*/
 
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use super::{PendingTransition, TrackerIndex};
 use crate::{
@@ -294,38 +294,6 @@ impl<A: HalApi> BufferTracker<A> {
         buffer_barriers
     }
 
-    /// Inserts a single buffer and its state into the resource tracker.
-    ///
-    /// If the resource already exists in the tracker, this will panic.
-    ///
-    /// If the ID is higher than the length of internal vectors,
-    /// the vectors will be extended. A call to set_size is not needed.
-    pub fn insert_single(&mut self, resource: &Arc<Buffer<A>>, state: BufferUses) {
-        let index = resource.tracker_index().as_usize();
-
-        self.allow_index(index);
-
-        self.tracker_assert_in_bounds(index);
-
-        unsafe {
-            let currently_owned = self.metadata.contains_unchecked(index);
-
-            if currently_owned {
-                panic!("Tried to insert buffer already tracked");
-            }
-
-            insert(
-                Some(&mut self.start),
-                &mut self.end,
-                &mut self.metadata,
-                index,
-                BufferStateProvider::Direct { state },
-                None,
-                ResourceMetadataProvider::Direct { resource },
-            )
-        }
-    }
-
     /// Sets the state of a single buffer.
     ///
     /// If a transition is needed to get the buffer into the given state, that transition
@@ -494,6 +462,148 @@ impl<A: HalApi> BufferTracker<A> {
     }
 }
 
+/// Stores all buffer state within a command buffer or device.
+pub(crate) struct DeviceBufferTracker<A: HalApi> {
+    start: Vec<BufferUses>,
+    end: Vec<BufferUses>,
+
+    metadata: ResourceMetadata<Weak<Buffer<A>>>,
+
+    temp: Vec<PendingTransition<BufferUses>>,
+}
+
+impl<A: HalApi> DeviceBufferTracker<A> {
+    pub fn new() -> Self {
+        Self {
+            start: Vec::new(),
+            end: Vec::new(),
+
+            metadata: ResourceMetadata::new(),
+
+            temp: Vec::new(),
+        }
+    }
+
+    fn tracker_assert_in_bounds(&self, index: usize) {
+        strict_assert!(index < self.start.len());
+        strict_assert!(index < self.end.len());
+        self.metadata.tracker_assert_in_bounds(index);
+    }
+
+    /// Sets the size of all the vectors inside the tracker.
+    ///
+    /// Must be called with the highest possible Buffer ID before
+    /// all unsafe functions are called.
+    fn set_size(&mut self, size: usize) {
+        self.start.resize(size, BufferUses::empty());
+        self.end.resize(size, BufferUses::empty());
+
+        self.metadata.set_size(size);
+    }
+
+    /// Extend the vectors to let the given index be valid.
+    fn allow_index(&mut self, index: usize) {
+        if index >= self.start.len() {
+            self.set_size(index + 1);
+        }
+    }
+
+    /// Returns a list of all buffers tracked.
+    pub fn used_resources(&self) -> impl Iterator<Item = Weak<Buffer<A>>> + '_ {
+        self.metadata.owned_resources()
+    }
+
+    /// Inserts a single buffer and its state into the resource tracker.
+    ///
+    /// If the resource already exists in the tracker, it will be overwritten.
+    pub fn insert_single(&mut self, buffer: &Arc<Buffer<A>>, state: BufferUses) {
+        let index = buffer.tracker_index().as_usize();
+
+        self.allow_index(index);
+
+        self.tracker_assert_in_bounds(index);
+
+        unsafe {
+            insert(
+                Some(&mut self.start),
+                &mut self.end,
+                &mut self.metadata,
+                index,
+                BufferStateProvider::Direct { state },
+                None,
+                ResourceMetadataProvider::Direct {
+                    resource: &Arc::downgrade(buffer),
+                },
+            )
+        }
+    }
+
+    /// Sets the state of a single buffer.
+    ///
+    /// If a transition is needed to get the buffer into the given state, that transition
+    /// is returned. No more than one transition is needed.
+    pub fn set_single(
+        &mut self,
+        buffer: &Arc<Buffer<A>>,
+        state: BufferUses,
+    ) -> Option<PendingTransition<BufferUses>> {
+        let index: usize = buffer.tracker_index().as_usize();
+
+        self.allow_index(index);
+
+        self.tracker_assert_in_bounds(index);
+
+        let start_state_provider = BufferStateProvider::Direct { state };
+
+        unsafe {
+            barrier(
+                &mut self.end,
+                index,
+                start_state_provider.clone(),
+                &mut self.temp,
+            )
+        };
+        unsafe { update(&mut self.end, index, start_state_provider) };
+
+        strict_assert!(self.temp.len() <= 1);
+
+        self.temp.pop()
+    }
+
+    /// Sets the given state for all buffers in the given tracker.
+    ///
+    /// If a transition is needed to get the buffers into the needed state,
+    /// those transitions are returned.
+    pub fn set_from_tracker_and_drain_transitions<'a, 'b: 'a>(
+        &'a mut self,
+        tracker: &'a BufferTracker<A>,
+        snatch_guard: &'b SnatchGuard<'b>,
+    ) -> impl Iterator<Item = BufferBarrier<'a, A>> {
+        let incoming_size = tracker.start.len();
+        if incoming_size > self.start.len() {
+            self.set_size(incoming_size);
+        }
+
+        for index in tracker.metadata.owned_indices() {
+            self.tracker_assert_in_bounds(index);
+
+            let start_state_provider = BufferStateProvider::Indirect {
+                state: &tracker.start,
+            };
+            let end_state_provider = BufferStateProvider::Indirect {
+                state: &tracker.end,
+            };
+            unsafe { barrier(&mut self.end, index, start_state_provider, &mut self.temp) };
+            unsafe { update(&mut self.end, index, end_state_provider) };
+        }
+
+        self.temp.drain(..).map(|pending| {
+            let buf = unsafe { tracker.metadata.get_resource_unchecked(pending.id as _) };
+            pending.into_hal(buf, snatch_guard)
+        })
+    }
+}
+
 /// Source of Buffer State.
 #[derive(Debug, Clone)]
 enum BufferStateProvider<'a> {
@@ -619,14 +729,14 @@ unsafe fn insert_or_barrier_update<A: HalApi>(
 }
 
 #[inline(always)]
-unsafe fn insert<A: HalApi>(
+unsafe fn insert<T: Clone>(
     start_states: Option<&mut [BufferUses]>,
     current_states: &mut [BufferUses],
-    resource_metadata: &mut ResourceMetadata<Arc<Buffer<A>>>,
+    resource_metadata: &mut ResourceMetadata<T>,
     index: usize,
     start_state_provider: BufferStateProvider<'_>,
     end_state_provider: Option<BufferStateProvider<'_>>,
-    metadata_provider: ResourceMetadataProvider<'_, Arc<Buffer<A>>>,
+    metadata_provider: ResourceMetadataProvider<'_, T>,
 ) {
     let new_start_state = unsafe { start_state_provider.get_state(index) };
     let new_end_state =
