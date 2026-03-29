@@ -72,7 +72,7 @@ Bottom level categories:
 
 #### naga
 
-- Naga used to turn `for` and `while(condition)` loops into `while(true)` loops, which confused downstream shader compilers, decreasing performance. This is no longer the case, and backends now write proper loop constructs. By @JMS55 in [#TODO](https://github.com/gfx-rs/wgpu/pull/TODO)
+- Naga used to turn `for` and `while(condition)` loops into `while(true)` loops, which confused downstream shader compilers, decreasing performance. This is no longer the case, and backends now write proper loop constructs. By @JMS55 in [#9329](https://github.com/gfx-rs/wgpu/pull/9329)
 
 ### Bug Fixes
 
