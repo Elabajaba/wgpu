@@ -2138,7 +2138,7 @@ pub enum Statement {
     /// Execution order:
     /// 1. Execute `initializer` block (once, before the loop begins).
     /// 2. Execute `condition_block`, then evaluate `condition`. If `Some`
-    ///    and false, exit the loop. If `None`, continue unconditionally.
+    ///    and false, exit the loop. If `None`, or `Some` and true, continue the loop.
     /// 3. Execute `body` block.
     /// 4. Execute `update` block.
     /// 5. Go to step 2.

@@ -2093,7 +2093,7 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
             } => {
                 // Pass `true` so that variable initializers are kept as Store
                 // statements in the block rather than being hoisted into
-                // LocalVariable::init.  This lets backends emit the
+                // LocalVariable::init. This lets backends emit the
                 // initializer inside the `for` header.
                 let initializer = self.block(initializer, true, ctx)?;
 
@@ -2123,14 +2123,19 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
                     body,
                 }
             }
-            ast::StatementKind::WhileLoop { condition, ref body } => {
+            ast::StatementKind::WhileLoop {
+                condition,
+                ref body,
+            } => {
                 // Lower the condition into its own block so backends can
                 // evaluate it separately from the body.
                 let mut condition_block = ir::Block::default();
                 let mut emitter = proc::Emitter::default();
                 emitter.start(&ctx.function.expressions);
-                let condition =
-                    self.expression(condition, &mut ctx.as_expression(&mut condition_block, &mut emitter))?;
+                let condition = self.expression(
+                    condition,
+                    &mut ctx.as_expression(&mut condition_block, &mut emitter),
+                )?;
                 condition_block.extend(emitter.finish(&ctx.function.expressions));
 
                 let body = self.block(body, true, ctx)?;
