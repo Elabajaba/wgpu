@@ -19,84 +19,6 @@ use crate::{
     valid, Handle, Module, ShaderStage, TypeInner,
 };
 
-/// Check whether a for-loop's condition_block and update are simple enough
-/// for native `for` syntax (only Emit + Store/Call).
-fn is_native_for_loop(condition_block: &crate::Block, update: &crate::Block) -> bool {
-    use crate::Statement;
-    condition_block
-        .iter()
-        .all(|s| matches!(s, Statement::Emit(_)))
-        && update.iter().all(|s| {
-            matches!(
-                s,
-                Statement::Emit(_) | Statement::Store { .. } | Statement::Call { .. }
-            )
-        })
-}
-
-/// Collect [`LocalVariable`] handles that will be written inside a `for`
-/// header instead of at function scope.
-///
-/// [`LocalVariable`]: crate::LocalVariable
-fn collect_for_init_variables(
-    block: &crate::Block,
-    expressions: &crate::Arena<crate::Expression>,
-) -> Vec<Handle<crate::LocalVariable>> {
-    use crate::{Expression, Statement};
-    let mut vars = Vec::new();
-    for stmt in block.iter() {
-        match *stmt {
-            Statement::ForLoop {
-                ref initializer,
-                ref condition_block,
-                ref update,
-                ref body,
-                ..
-            } => {
-                if is_native_for_loop(condition_block, update) {
-                    for s in initializer.iter() {
-                        if let Statement::Store { pointer, .. } = *s {
-                            if let Expression::LocalVariable(var) = expressions[pointer] {
-                                vars.push(var);
-                            }
-                        }
-                    }
-                }
-                vars.extend(collect_for_init_variables(body, expressions));
-            }
-            Statement::Block(ref b) => {
-                vars.extend(collect_for_init_variables(b, expressions));
-            }
-            Statement::If {
-                ref accept,
-                ref reject,
-                ..
-            } => {
-                vars.extend(collect_for_init_variables(accept, expressions));
-                vars.extend(collect_for_init_variables(reject, expressions));
-            }
-            Statement::Loop {
-                ref body,
-                ref continuing,
-                ..
-            } => {
-                vars.extend(collect_for_init_variables(body, expressions));
-                vars.extend(collect_for_init_variables(continuing, expressions));
-            }
-            Statement::Switch { ref cases, .. } => {
-                for case in cases {
-                    vars.extend(collect_for_init_variables(&case.body, expressions));
-                }
-            }
-            Statement::WhileLoop { ref body, .. } => {
-                vars.extend(collect_for_init_variables(body, expressions));
-            }
-            _ => {}
-        }
-    }
-    vars
-}
-
 /// Shorthand result used internally by the backend
 type BackendResult = Result<(), Error>;
 
@@ -588,7 +510,7 @@ impl<W: Write> Writer<W> {
         writeln!(self.out)?;
 
         // Collect variables that will be declared in `for` headers.
-        let for_init_vars = collect_for_init_variables(&func.body, &func.expressions);
+        let for_init_vars = back::collect_for_init_variables(&func.body, &func.expressions);
 
         // Write function local variables (skip those owned by for-loops)
         let mut wrote_any_local = false;

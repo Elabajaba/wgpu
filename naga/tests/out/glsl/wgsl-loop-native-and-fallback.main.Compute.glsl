@@ -10,9 +10,7 @@ layout(std430) buffer type_1_block_0Compute { int _group_0_binding_0_cs[]; };
 
 int simple_for() {
     int sum = 0;
-    int i = 0;
-    i = 0;
-    for(; (i < 10); i = (i + 1)) {
+    for(int i = 0; (i < 10); i = (i + 1)) {
         int _e7 = sum;
         int _e8 = i;
         sum = (_e7 + _e8);
@@ -33,9 +31,7 @@ int simple_while() {
 
 int for_with_continue() {
     int sum_1 = 0;
-    int i_2 = 0;
-    i_2 = 0;
-    for(; (i_2 < 10); i_2 = (i_2 + 1)) {
+    for(int i_2 = 0; (i_2 < 10); i_2 = (i_2 + 1)) {
         int _e7 = i_2;
         if ((_e7 == 5)) {
             continue;
@@ -50,9 +46,7 @@ int for_with_continue() {
 
 int for_with_break() {
     int sum_2 = 0;
-    int i_3 = 0;
-    i_3 = 0;
-    for(; (i_3 < 10); i_3 = (i_3 + 1)) {
+    for(int i_3 = 0; (i_3 < 10); i_3 = (i_3 + 1)) {
         int _e7 = i_3;
         if ((_e7 == 5)) {
             break;
@@ -106,10 +100,8 @@ int while_with_break() {
 int nested_loops() {
     int sum_3 = 0;
     int i_7 = 0;
-    int j = 0;
     while((i_7 < 3)) {
-        j = 0;
-        for(; (j < 3); j = (j + 1)) {
+        for(int j = 0; (j < 3); j = (j + 1)) {
             int _e12 = sum_3;
             int _e13 = i_7;
             int _e16 = j;

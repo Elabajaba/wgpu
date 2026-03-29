@@ -1045,6 +1045,11 @@ impl<W: Write> Writer<W> {
     /// The names of the OOB locals are also added to `self.names` at the same
     /// time.
     fn put_locals(&mut self, context: &ExpressionContext) -> BackendResult {
+        let for_init_vars = back::collect_for_init_variables(
+            &context.function.body,
+            &context.function.expressions,
+        );
+
         let oob_local_types = context.oob_local_types();
         for &ty in oob_local_types.iter() {
             let name_key = NameKey::oob_local_for_type(context.origin, ty);
@@ -1055,6 +1060,7 @@ impl<W: Write> Writer<W> {
             .function
             .local_variables
             .iter()
+            .filter(|(handle, _)| !for_init_vars.contains(handle))
             .map(|(local_handle, local)| {
                 let name_key = NameKey::local(context.origin, local_handle);
                 (name_key, local.ty, local.init)
@@ -3670,6 +3676,36 @@ impl<W: Write> Writer<W> {
     }
 
     /// Write the update portion of a `for` header inline (no semicolons/newlines).
+    /// Write the initializer portion of a `for` header.
+    fn put_for_header_init(
+        &mut self,
+        block: &crate::Block,
+        context: &StatementContext,
+    ) -> BackendResult {
+        for sta in block.iter() {
+            if let crate::Statement::Store { pointer, value } = *sta {
+                if let crate::Expression::LocalVariable(var) =
+                    context.expression.function.expressions[pointer]
+                {
+                    let local = &context.expression.function.local_variables[var];
+                    let name_key = NameKey::local(context.expression.origin, var);
+                    let ty_name = TypeContext {
+                        handle: local.ty,
+                        gctx: context.expression.module.to_ctx(),
+                        names: &self.names,
+                        access: crate::StorageAccess::empty(),
+                        first_time: false,
+                    };
+                    write!(self.out, "{} {}", ty_name, self.names[&name_key])?;
+                    write!(self.out, " = ")?;
+                    self.put_expression(value, &context.expression, true)?;
+                    return Ok(());
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn put_for_update_inline(
         &mut self,
         block: &crate::Block,
@@ -4401,7 +4437,6 @@ impl<W: Write> Writer<W> {
                         )
                     });
 
-                    self.put_block(level, initializer, context)?;
                     let force_loop_bound_statements =
                         self.gen_force_bounded_loop_statements(level, context);
                     if let Some((ref decl, _)) = force_loop_bound_statements {
@@ -4409,7 +4444,9 @@ impl<W: Write> Writer<W> {
                     }
 
                     if cond_simple && update_simple {
-                        write!(self.out, "{level}for(; ")?;
+                        write!(self.out, "{level}for(")?;
+                        self.put_for_header_init(initializer, context)?;
+                        write!(self.out, "; ")?;
                         if let Some(condition) = condition {
                             self.put_expression(condition, &context.expression, true)?;
                         }
@@ -4422,6 +4459,7 @@ impl<W: Write> Writer<W> {
                         self.put_block(level.next(), body, context)?;
                         writeln!(self.out, "{level}}}")?;
                     } else {
+                        self.put_block(level, initializer, context)?;
                         let gate_name = (!update.is_empty()).then(|| self.namer.call("loop_init"));
                         if let Some(ref gate_name) = gate_name {
                             writeln!(self.out, "{level}bool {gate_name} = true;")?;

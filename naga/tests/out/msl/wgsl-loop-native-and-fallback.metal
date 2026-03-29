@@ -13,10 +13,8 @@ typedef int type_1[1];
 int simple_for(
 ) {
     int sum = 0;
-    int i = {};
-    i = 0;
     uint2 loop_bound = uint2(4294967295u);
-    for(; i < 10; i = as_type<int>(as_type<uint>(i) + as_type<uint>(1))) {
+    for(int i = 0; i < 10; i = as_type<int>(as_type<uint>(i) + as_type<uint>(1))) {
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         int _e7 = sum;
@@ -44,10 +42,8 @@ int simple_while(
 int for_with_continue(
 ) {
     int sum_1 = 0;
-    int i_2 = {};
-    i_2 = 0;
     uint2 loop_bound_2 = uint2(4294967295u);
-    for(; i_2 < 10; i_2 = as_type<int>(as_type<uint>(i_2) + as_type<uint>(1))) {
+    for(int i_2 = 0; i_2 < 10; i_2 = as_type<int>(as_type<uint>(i_2) + as_type<uint>(1))) {
         if (metal::all(loop_bound_2 == uint2(0u))) { break; }
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
         int _e7 = i_2;
@@ -65,10 +61,8 @@ int for_with_continue(
 int for_with_break(
 ) {
     int sum_2 = 0;
-    int i_3 = {};
-    i_3 = 0;
     uint2 loop_bound_3 = uint2(4294967295u);
-    for(; i_3 < 10; i_3 = as_type<int>(as_type<uint>(i_3) + as_type<uint>(1))) {
+    for(int i_3 = 0; i_3 < 10; i_3 = as_type<int>(as_type<uint>(i_3) + as_type<uint>(1))) {
         if (metal::all(loop_bound_3 == uint2(0u))) { break; }
         loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
         int _e7 = i_3;
@@ -137,14 +131,12 @@ int nested_loops(
 ) {
     int sum_3 = 0;
     int i_7 = 0;
-    int j = {};
     uint2 loop_bound_7 = uint2(4294967295u);
     while(i_7 < 3) {
         if (metal::all(loop_bound_7 == uint2(0u))) { break; }
         loop_bound_7 -= uint2(loop_bound_7.y == 0u, 1u);
-        j = 0;
         uint2 loop_bound_8 = uint2(4294967295u);
-        for(; j < 3; j = as_type<int>(as_type<uint>(j) + as_type<uint>(1))) {
+        for(int j = 0; j < 3; j = as_type<int>(as_type<uint>(j) + as_type<uint>(1))) {
             if (metal::all(loop_bound_8 == uint2(0u))) { break; }
             loop_bound_8 -= uint2(loop_bound_8.y == 0u, 1u);
             int _e12 = sum_3;

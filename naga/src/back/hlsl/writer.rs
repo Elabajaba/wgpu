@@ -1822,8 +1822,14 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
             self.write_ep_arguments_initialization(module, func, index)?;
         }
 
-        // Write function local variables
+        // Collect variables that will be declared in `for` headers.
+        let for_init_vars = back::collect_for_init_variables(&func.body, &func.expressions);
+
+        // Write function local variables (skip those owned by for-loops)
         for (handle, local) in func.local_variables.iter() {
+            if for_init_vars.contains(&handle) {
+                continue;
+            }
             // Write indentation (only for readability)
             write!(self.out, "{}", back::INDENT)?;
 
@@ -1865,7 +1871,7 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
             }
         }
 
-        if !func.local_variables.is_empty() {
+        if func.local_variables.len() > for_init_vars.len() {
             writeln!(self.out)?;
         }
 
@@ -2167,6 +2173,38 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
 
     /// Helper method used to write statements
     ///
+    /// Write the initializer portion of a `for` header.
+    fn write_for_header_init(
+        &mut self,
+        module: &Module,
+        block: &crate::Block,
+        func_ctx: &back::FunctionCtx<'_>,
+    ) -> BackendResult {
+        use crate::{Expression, Statement};
+        let func = match func_ctx.ty {
+            back::FunctionType::Function(handle) => &module.functions[handle],
+            back::FunctionType::EntryPoint(index) => {
+                &module.entry_points[index as usize].function
+            }
+        };
+        for sta in block.iter() {
+            if let Statement::Store { pointer, value } = *sta {
+                if let Expression::LocalVariable(var) = func_ctx.expressions[pointer] {
+                    let local = &func.local_variables[var];
+                    self.write_type(module, local.ty)?;
+                    write!(self.out, " {}", self.names[&func_ctx.name_key(var)])?;
+                    if let TypeInner::Array { base, size, .. } = module.types[local.ty].inner {
+                        self.write_array_size(module, base, size)?;
+                    }
+                    write!(self.out, " = ")?;
+                    self.write_expr(module, value, func_ctx)?;
+                    return Ok(());
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Write the update portion of a `for` header inline (no semicolons/newlines).
     fn write_for_update_inline(
         &mut self,
@@ -3058,9 +3096,6 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                     )
                 });
 
-                for sta in initializer.iter() {
-                    self.write_stmt(module, sta, func_ctx, level)?;
-                }
                 let force_loop_bound_statements = self.gen_force_bounded_loop_statements(level);
                 if let Some((ref decl, _)) = force_loop_bound_statements {
                     writeln!(self.out, "{decl}")?;
@@ -3069,7 +3104,9 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                 self.continue_ctx.enter_loop();
 
                 if cond_simple && update_simple {
-                    write!(self.out, "{level}for(; ")?;
+                    write!(self.out, "{level}for(")?;
+                    self.write_for_header_init(module, initializer, func_ctx)?;
+                    write!(self.out, "; ")?;
                     if let Some(condition) = condition {
                         self.write_expr(module, condition, func_ctx)?;
                     }
@@ -3084,6 +3121,9 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                     }
                     writeln!(self.out, "{level}}}")?;
                 } else {
+                    for sta in initializer.iter() {
+                        self.write_stmt(module, sta, func_ctx, level)?;
+                    }
                     let gate_name = (!update.is_empty()).then(|| self.namer.call("loop_init"));
                     if let Some(ref gate_name) = gate_name {
                         writeln!(self.out, "{level}bool {gate_name} = true;")?;

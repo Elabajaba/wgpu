@@ -1363,11 +1363,17 @@ impl<'a, W: Write> Writer<'a, W> {
             }
         }
 
-        // Write all function locals
+        // Collect variables that will be declared in `for` headers.
+        let for_init_vars = back::collect_for_init_variables(&func.body, &func.expressions);
+
+        // Write all function locals (skip those owned by for-loops)
         // Locals are `type name (= init)?;` where the init part (including the =) are optional
         //
         // Always adds a newline
         for (handle, local) in func.local_variables.iter() {
+            if for_init_vars.contains(&handle) {
+                continue;
+            }
             // Write indentation (only for readability) and the type
             // `write_type` adds no trailing space
             write!(self.out, "{}", back::INDENT)?;
@@ -1583,6 +1589,45 @@ impl<'a, W: Write> Writer<'a, W> {
     }
 
     /// Write the update portion of a `for` header inline (no semicolons/newlines).
+    /// Write the initializer portion of a `for` header.
+    fn write_for_header_init(
+        &mut self,
+        block: &crate::Block,
+        ctx: &back::FunctionCtx,
+    ) -> BackendResult {
+        use crate::{Expression, Statement};
+
+        // Find a LocalVariable Store in the initializer block.
+        for sta in block.iter() {
+            if let Statement::Store { pointer, value } = *sta {
+                if let Expression::LocalVariable(var) = ctx.expressions[pointer] {
+                    let local = &self.module.functions[match ctx.ty {
+                        back::FunctionType::Function(handle) => handle,
+                        back::FunctionType::EntryPoint(idx) => {
+                            // Entry points don't have for-loop inits in practice,
+                            // but handle it for correctness.
+                            write!(self.out, "{}", back::INDENT)?;
+                            self.write_type(self.module.entry_points[idx as usize].function.local_variables[var].ty)?;
+                            write!(self.out, " {}", self.names[&ctx.name_key(var)])?;
+                            write!(self.out, " = ")?;
+                            self.write_expr(value, ctx)?;
+                            return Ok(());
+                        }
+                    }].local_variables[var];
+                    self.write_type(local.ty)?;
+                    write!(self.out, " {}", self.names[&ctx.name_key(var)])?;
+                    if let TypeInner::Array { base, size, .. } = self.module.types[local.ty].inner {
+                        self.write_array_size(base, size)?;
+                    }
+                    write!(self.out, " = ")?;
+                    self.write_expr(value, ctx)?;
+                    return Ok(());
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn write_for_update_inline(
         &mut self,
         block: &crate::Block,
@@ -2315,14 +2360,13 @@ impl<'a, W: Write> Writer<'a, W> {
                     )
                 });
 
-                for sta in initializer.iter() {
-                    self.write_stmt(sta, ctx, level)?;
-                }
                 self.continue_ctx.enter_loop();
 
                 if cond_simple && update_simple {
                     // Native for loop — `continue` jumps to the update naturally.
-                    write!(self.out, "{level}for(; ")?;
+                    write!(self.out, "{level}for(")?;
+                    self.write_for_header_init(initializer, ctx)?;
+                    write!(self.out, "; ")?;
                     if let Some(condition) = condition {
                         self.write_expr(condition, ctx)?;
                     }
@@ -2335,6 +2379,9 @@ impl<'a, W: Write> Writer<'a, W> {
                     writeln!(self.out, "{level}}}")?;
                 } else {
                     // Fall back to gate pattern for complex cases.
+                    for sta in initializer.iter() {
+                        self.write_stmt(sta, ctx, level)?;
+                    }
                     if !update.is_empty() {
                         let gate_name = self.namer.call("loop_init");
                         writeln!(self.out, "{level}bool {gate_name} = true;")?;

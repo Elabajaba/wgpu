@@ -3,10 +3,8 @@ RWByteAddressBuffer out_ : register(u0);
 int simple_for()
 {
     int sum = int(0);
-    int i = (int)0;
 
-    i = int(0);
-    for(; (i < int(10)); i = asint(asuint(i) + asuint(int(1)))) {
+    for(int i = int(0); (i < int(10)); i = asint(asuint(i) + asuint(int(1)))) {
         int _e7 = sum;
         int _e8 = i;
         sum = asint(asuint(_e7) + asuint(_e8));
@@ -30,10 +28,8 @@ int simple_while()
 int for_with_continue()
 {
     int sum_1 = int(0);
-    int i_2 = (int)0;
 
-    i_2 = int(0);
-    for(; (i_2 < int(10)); i_2 = asint(asuint(i_2) + asuint(int(1)))) {
+    for(int i_2 = int(0); (i_2 < int(10)); i_2 = asint(asuint(i_2) + asuint(int(1)))) {
         int _e7 = i_2;
         if ((_e7 == int(5))) {
             continue;
@@ -50,11 +46,9 @@ int nested_for_while()
 {
     int sum_2 = int(0);
     int i_3 = int(0);
-    int j = (int)0;
 
     while((i_3 < int(3))) {
-        j = int(0);
-        for(; (j < int(3)); j = asint(asuint(j) + asuint(int(1)))) {
+        for(int j = int(0); (j < int(3)); j = asint(asuint(j) + asuint(int(1)))) {
             int _e12 = sum_2;
             int _e13 = i_3;
             int _e16 = j;

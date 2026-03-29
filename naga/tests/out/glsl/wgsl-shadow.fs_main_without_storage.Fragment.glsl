@@ -50,10 +50,8 @@ float fetch_shadow(uint light_id, vec4 homogeneous_coords) {
 void main() {
     VertexOutput in_1 = VertexOutput(gl_FragCoord, _vs2fs_location0, _vs2fs_location1);
     vec3 color_1 = c_ambient;
-    uint i_1 = 0u;
     vec3 normal_1 = normalize(in_1.world_normal);
-    i_1 = 0u;
-    for(; (i_1 < min(_group_0_binding_0_fs.num_lights.x, c_max_lights)); i_1 = (i_1 + 1u)) {
+    for(    uint i_1 = 0u; (i_1 < min(_group_0_binding_0_fs.num_lights.x, c_max_lights)); i_1 = (i_1 + 1u)) {
         uint _e16 = i_1;
         Light light = _group_0_binding_1_fs[_e16];
         uint _e19 = i_1;

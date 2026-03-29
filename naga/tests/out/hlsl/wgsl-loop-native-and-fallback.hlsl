@@ -3,11 +3,9 @@ RWByteAddressBuffer out_ : register(u0);
 int simple_for()
 {
     int sum = int(0);
-    int i = (int)0;
 
-    i = int(0);
     uint2 loop_bound = uint2(4294967295u, 4294967295u);
-    for(; (i < int(10)); i = asint(asuint(i) + asuint(int(1)))) {
+    for(int i = int(0); (i < int(10)); i = asint(asuint(i) + asuint(int(1)))) {
         if (all(loop_bound == uint2(0u, 0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         int _e7 = sum;
@@ -36,11 +34,9 @@ int simple_while()
 int for_with_continue()
 {
     int sum_1 = int(0);
-    int i_2 = (int)0;
 
-    i_2 = int(0);
     uint2 loop_bound_2 = uint2(4294967295u, 4294967295u);
-    for(; (i_2 < int(10)); i_2 = asint(asuint(i_2) + asuint(int(1)))) {
+    for(int i_2 = int(0); (i_2 < int(10)); i_2 = asint(asuint(i_2) + asuint(int(1)))) {
         if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
         int _e7 = i_2;
@@ -58,11 +54,9 @@ int for_with_continue()
 int for_with_break()
 {
     int sum_2 = int(0);
-    int i_3 = (int)0;
 
-    i_3 = int(0);
     uint2 loop_bound_3 = uint2(4294967295u, 4294967295u);
-    for(; (i_3 < int(10)); i_3 = asint(asuint(i_3) + asuint(int(1)))) {
+    for(int i_3 = int(0); (i_3 < int(10)); i_3 = asint(asuint(i_3) + asuint(int(1)))) {
         if (all(loop_bound_3 == uint2(0u, 0u))) { break; }
         loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
         int _e7 = i_3;
@@ -134,15 +128,13 @@ int nested_loops()
 {
     int sum_3 = int(0);
     int i_7 = int(0);
-    int j = (int)0;
 
     uint2 loop_bound_7 = uint2(4294967295u, 4294967295u);
     while((i_7 < int(3))) {
         if (all(loop_bound_7 == uint2(0u, 0u))) { break; }
         loop_bound_7 -= uint2(loop_bound_7.y == 0u, 1u);
-        j = int(0);
         uint2 loop_bound_8 = uint2(4294967295u, 4294967295u);
-        for(; (j < int(3)); j = asint(asuint(j) + asuint(int(1)))) {
+        for(int j = int(0); (j < int(3)); j = asint(asuint(j) + asuint(int(1)))) {
             if (all(loop_bound_8 == uint2(0u, 0u))) { break; }
             loop_bound_8 -= uint2(loop_bound_8.y == 0u, 1u);
             int _e12 = sum_3;

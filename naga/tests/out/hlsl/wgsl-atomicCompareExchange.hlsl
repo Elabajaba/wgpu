@@ -16,13 +16,11 @@ RWByteAddressBuffer arr_u32_ : register(u1);
 [numthreads(1, 1, 1)]
 void test_atomic_compare_exchange_i32_()
 {
-    uint i = (uint)0;
     int old = (int)0;
     bool exchanged = (bool)0;
 
-    i = 0u;
     uint2 loop_bound = uint2(4294967295u, 4294967295u);
-    for(; (i < SIZE); i = (i + 1u)) {
+    for(uint i = 0u; (i < SIZE); i = (i + 1u)) {
         if (all(loop_bound == uint2(0u, 0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         uint _e6 = i;
@@ -49,13 +47,11 @@ void test_atomic_compare_exchange_i32_()
 [numthreads(1, 1, 1)]
 void test_atomic_compare_exchange_u32_()
 {
-    uint i_1 = (uint)0;
     uint old_1 = (uint)0;
     bool exchanged_1 = (bool)0;
 
-    i_1 = 0u;
     uint2 loop_bound_2 = uint2(4294967295u, 4294967295u);
-    for(; (i_1 < SIZE); i_1 = (i_1 + 1u)) {
+    for(uint i_1 = 0u; (i_1 < SIZE); i_1 = (i_1 + 1u)) {
         if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
         uint _e6 = i_1;

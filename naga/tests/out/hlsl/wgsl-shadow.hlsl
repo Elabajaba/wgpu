@@ -92,12 +92,10 @@ float4 fs_main(FragmentInput_fs_main fragmentinput_fs_main) : SV_Target0
 {
     VertexOutput in_ = { fragmentinput_fs_main.proj_position_1, fragmentinput_fs_main.world_normal_1, fragmentinput_fs_main.world_position_1 };
     float3 color = c_ambient;
-    uint i = (uint)0;
 
     float3 normal_1 = normalize(in_.world_normal);
-    i = 0u;
     uint2 loop_bound = uint2(4294967295u, 4294967295u);
-    for(; (i < min(u_globals.num_lights.x, c_max_lights)); i = (i + 1u)) {
+    for(uint i = 0u; (i < min(u_globals.num_lights.x, c_max_lights)); i = (i + 1u)) {
         if (all(loop_bound == uint2(0u, 0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         uint _e16 = i;
@@ -118,12 +116,10 @@ float4 fs_main_without_storage(FragmentInput_fs_main_without_storage fragmentinp
 {
     VertexOutput in_1 = { fragmentinput_fs_main_without_storage.proj_position_2, fragmentinput_fs_main_without_storage.world_normal_2, fragmentinput_fs_main_without_storage.world_position_2 };
     float3 color_1 = c_ambient;
-    uint i_1 = (uint)0;
 
     float3 normal_2 = normalize(in_1.world_normal);
-    i_1 = 0u;
     uint2 loop_bound_1 = uint2(4294967295u, 4294967295u);
-    for(; (i_1 < min(u_globals.num_lights.x, c_max_lights)); i_1 = (i_1 + 1u)) {
+    for(uint i_1 = 0u; (i_1 < min(u_globals.num_lights.x, c_max_lights)); i_1 = (i_1 + 1u)) {
         if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
         uint _e16 = i_1;

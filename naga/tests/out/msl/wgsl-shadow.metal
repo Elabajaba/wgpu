@@ -98,11 +98,9 @@ fragment fs_mainOutput fs_main(
 ) {
     const VertexOutput in = { proj_position, varyings_1.world_normal, varyings_1.world_position };
     metal::float3 color = c_ambient;
-    uint i = {};
     metal::float3 normal_1 = metal::normalize(in.world_normal);
-    i = 0u;
     uint2 loop_bound = uint2(4294967295u);
-    for(; i < metal::min(u_globals.num_lights.x, c_max_lights); i = i + 1u) {
+    for(uint i = 0u; i < metal::min(u_globals.num_lights.x, c_max_lights); i = i + 1u) {
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         uint _e16 = i;
@@ -138,11 +136,9 @@ fragment fs_main_without_storageOutput fs_main_without_storage(
 ) {
     const VertexOutput in_1 = { proj_position_1, varyings_2.world_normal, varyings_2.world_position };
     metal::float3 color_1 = c_ambient;
-    uint i_1 = {};
     metal::float3 normal_2 = metal::normalize(in_1.world_normal);
-    i_1 = 0u;
     uint2 loop_bound_1 = uint2(4294967295u);
-    for(; i_1 < metal::min(u_globals.num_lights.x, c_max_lights); i_1 = i_1 + 1u) {
+    for(uint i_1 = 0u; i_1 < metal::min(u_globals.num_lights.x, c_max_lights); i_1 = i_1 + 1u) {
         if (metal::all(loop_bound_1 == uint2(0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
         uint _e16 = i_1;

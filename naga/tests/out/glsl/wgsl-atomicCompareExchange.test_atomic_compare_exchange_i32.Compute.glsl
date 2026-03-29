@@ -19,11 +19,9 @@ layout(std430) buffer type_3_block_0Compute { int _group_0_binding_0_cs[128]; };
 
 
 void main() {
-    uint i = 0u;
     int old = 0;
     bool exchanged = false;
-    i = 0u;
-    for(; (i < SIZE); i = (i + 1u)) {
+    for(    uint i = 0u; (i < SIZE); i = (i + 1u)) {
         uint _e6 = i;
         int _e8 = _group_0_binding_0_cs[_e6];
         old = _e8;

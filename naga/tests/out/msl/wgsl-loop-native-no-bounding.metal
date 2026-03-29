@@ -13,9 +13,7 @@ typedef int type_1[1];
 int simple_for(
 ) {
     int sum = 0;
-    int i = {};
-    i = 0;
-    for(; i < 10; i = as_type<int>(as_type<uint>(i) + as_type<uint>(1))) {
+    for(int i = 0; i < 10; i = as_type<int>(as_type<uint>(i) + as_type<uint>(1))) {
         int _e7 = sum;
         int _e8 = i;
         sum = as_type<int>(as_type<uint>(_e7) + as_type<uint>(_e8));
@@ -38,9 +36,7 @@ int simple_while(
 int for_with_continue(
 ) {
     int sum_1 = 0;
-    int i_2 = {};
-    i_2 = 0;
-    for(; i_2 < 10; i_2 = as_type<int>(as_type<uint>(i_2) + as_type<uint>(1))) {
+    for(int i_2 = 0; i_2 < 10; i_2 = as_type<int>(as_type<uint>(i_2) + as_type<uint>(1))) {
         int _e7 = i_2;
         if (_e7 == 5) {
             continue;
@@ -57,10 +53,8 @@ int nested_for_while(
 ) {
     int sum_2 = 0;
     int i_3 = 0;
-    int j = {};
     while(i_3 < 3) {
-        j = 0;
-        for(; j < 3; j = as_type<int>(as_type<uint>(j) + as_type<uint>(1))) {
+        for(int j = 0; j < 3; j = as_type<int>(as_type<uint>(j) + as_type<uint>(1))) {
             int _e12 = sum_2;
             int _e13 = i_3;
             int _e16 = j;

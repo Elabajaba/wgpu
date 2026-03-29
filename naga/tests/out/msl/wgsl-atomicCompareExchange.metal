@@ -75,12 +75,10 @@ constant uint SIZE = 128u;
 kernel void test_atomic_compare_exchange_i32_(
   device type_3& arr_i32_ [[user(fake0)]]
 ) {
-    uint i = {};
     int old = {};
     bool exchanged = {};
-    i = 0u;
     uint2 loop_bound = uint2(4294967295u);
-    for(; i < SIZE; i = i + 1u) {
+    for(uint i = 0u; i < SIZE; i = i + 1u) {
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         uint _e6 = i;
@@ -107,12 +105,10 @@ kernel void test_atomic_compare_exchange_i32_(
 kernel void test_atomic_compare_exchange_u32_(
   device type_5& arr_u32_ [[user(fake0)]]
 ) {
-    uint i_1 = {};
     uint old_1 = {};
     bool exchanged_1 = {};
-    i_1 = 0u;
     uint2 loop_bound_2 = uint2(4294967295u);
-    for(; i_1 < SIZE; i_1 = i_1 + 1u) {
+    for(uint i_1 = 0u; i_1 < SIZE; i_1 = i_1 + 1u) {
         if (metal::all(loop_bound_2 == uint2(0u))) { break; }
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
         uint _e6 = i_1;
