@@ -792,9 +792,7 @@ impl<W: Write> Writer<W> {
 
         let func = match func_ctx.ty {
             back::FunctionType::Function(handle) => &module.functions[handle],
-            back::FunctionType::EntryPoint(index) => {
-                &module.entry_points[index as usize].function
-            }
+            back::FunctionType::EntryPoint(index) => &module.entry_points[index as usize].function,
         };
 
         // Find a LocalVariable declared in this block.

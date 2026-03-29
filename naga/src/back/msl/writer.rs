@@ -3697,8 +3697,7 @@ impl<W: Write> Writer<W> {
                         write!(self.out, ", ")?;
                     }
                     first = false;
-                    let name = &self.names
-                        [&NameKey::Function(function)];
+                    let name = &self.names[&NameKey::Function(function)];
                     write!(self.out, "{name}(")?;
                     for (i, &arg) in arguments.iter().enumerate() {
                         if i != 0 {
@@ -4417,21 +4416,18 @@ impl<W: Write> Writer<W> {
                         write!(self.out, "; ")?;
                         self.put_for_update_inline(update, context)?;
                         writeln!(self.out, ") {{")?;
-                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
-                        {
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
                             writeln!(self.out, "{break_and_inc}")?;
                         }
                         self.put_block(level.next(), body, context)?;
                         writeln!(self.out, "{level}}}")?;
                     } else {
-                        let gate_name =
-                            (!update.is_empty()).then(|| self.namer.call("loop_init"));
+                        let gate_name = (!update.is_empty()).then(|| self.namer.call("loop_init"));
                         if let Some(ref gate_name) = gate_name {
                             writeln!(self.out, "{level}bool {gate_name} = true;")?;
                         }
                         writeln!(self.out, "{level}while(true) {{")?;
-                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
-                        {
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
                             writeln!(self.out, "{break_and_inc}")?;
                         }
                         if let Some(ref gate_name) = gate_name {
@@ -4446,11 +4442,7 @@ impl<W: Write> Writer<W> {
                         if let Some(condition) = condition {
                             let lif = level.next();
                             write!(self.out, "{lif}if (!(")?;
-                            self.put_expression(
-                                condition,
-                                &context.expression,
-                                true,
-                            )?;
+                            self.put_expression(condition, &context.expression, true)?;
                             writeln!(self.out, ")) {{")?;
                             writeln!(self.out, "{}break;", lif.next())?;
                             writeln!(self.out, "{lif}}}")?;
@@ -4477,16 +4469,14 @@ impl<W: Write> Writer<W> {
                         write!(self.out, "{level}while(")?;
                         self.put_expression(condition, &context.expression, true)?;
                         writeln!(self.out, ") {{")?;
-                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
-                        {
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
                             writeln!(self.out, "{break_and_inc}")?;
                         }
                         self.put_block(level.next(), body, context)?;
                         writeln!(self.out, "{level}}}")?;
                     } else {
                         writeln!(self.out, "{level}while(true) {{")?;
-                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
-                        {
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
                             writeln!(self.out, "{break_and_inc}")?;
                         }
                         self.put_block(level.next(), condition_block, context)?;

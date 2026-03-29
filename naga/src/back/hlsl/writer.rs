@@ -3084,8 +3084,7 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                     }
                     writeln!(self.out, "{level}}}")?;
                 } else {
-                    let gate_name =
-                        (!update.is_empty()).then(|| self.namer.call("loop_init"));
+                    let gate_name = (!update.is_empty()).then(|| self.namer.call("loop_init"));
                     if let Some(ref gate_name) = gate_name {
                         writeln!(self.out, "{level}bool {gate_name} = true;")?;
                     }

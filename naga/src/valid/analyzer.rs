@@ -1242,7 +1242,10 @@ impl FunctionInfo {
                         expression_arena,
                         diagnostic_filter_arena,
                     )?;
-                    init_uniformity | condition_block_uniformity | body_uniformity | update_uniformity
+                    init_uniformity
+                        | condition_block_uniformity
+                        | body_uniformity
+                        | update_uniformity
                 }
                 S::WhileLoop {
                     condition,

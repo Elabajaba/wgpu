@@ -4201,8 +4201,7 @@ impl BlockContext<'_> {
                     // Write initializer block if non-empty.
                     if !initializer.is_empty() {
                         let init_id = self.gen_id();
-                        self.function
-                            .consume(block, Instruction::branch(init_id));
+                        self.function.consume(block, Instruction::branch(init_id));
                         let _ = self.write_block(
                             init_id,
                             initializer,
@@ -4223,8 +4222,7 @@ impl BlockContext<'_> {
                     // Preamble: loop merge header.
                     block = Block::new(preamble_id);
                     if let Some(debug_info) = debug_info {
-                        let loc: crate::SourceLocation =
-                            span.location(debug_info.source_code);
+                        let loc: crate::SourceLocation = span.location(debug_info.source_code);
                         block.body.push(Instruction::line(
                             debug_info.source_file_id,
                             loc.line_number,
@@ -4237,8 +4235,7 @@ impl BlockContext<'_> {
                         spirv::SelectionControl::NONE,
                     ));
                     if self.force_loop_bounding {
-                        block = self
-                            .write_force_bounded_loop_instructions(block, merge_id);
+                        block = self.write_force_bounded_loop_instructions(block, merge_id);
                     }
 
                     let inner_loop_context = LoopContext {
@@ -4250,17 +4247,13 @@ impl BlockContext<'_> {
                         let cond_id = self.gen_id();
                         let body_id = self.gen_id();
 
-                        self.function
-                            .consume(block, Instruction::branch(cond_id));
+                        self.function.consume(block, Instruction::branch(cond_id));
 
                         // Condition block: evaluate condition then branch.
                         let _ = self.write_block(
                             cond_id,
                             condition_block,
-                            BlockExit::ConditionLoop {
-                                condition,
-                                body_id,
-                            },
+                            BlockExit::ConditionLoop { condition, body_id },
                             inner_loop_context,
                             debug_info,
                         )?;
@@ -4277,8 +4270,7 @@ impl BlockContext<'_> {
                         )?;
                     } else {
                         let body_id = self.gen_id();
-                        self.function
-                            .consume(block, Instruction::branch(body_id));
+                        self.function.consume(block, Instruction::branch(body_id));
 
                         let _ = self.write_block(
                             body_id,
@@ -4322,8 +4314,7 @@ impl BlockContext<'_> {
                     // Preamble: loop merge header.
                     block = Block::new(preamble_id);
                     if let Some(debug_info) = debug_info {
-                        let loc: crate::SourceLocation =
-                            span.location(debug_info.source_code);
+                        let loc: crate::SourceLocation = span.location(debug_info.source_code);
                         block.body.push(Instruction::line(
                             debug_info.source_file_id,
                             loc.line_number,
@@ -4336,8 +4327,7 @@ impl BlockContext<'_> {
                         spirv::SelectionControl::NONE,
                     ));
                     if self.force_loop_bounding {
-                        block = self
-                            .write_force_bounded_loop_instructions(block, merge_id);
+                        block = self.write_force_bounded_loop_instructions(block, merge_id);
                     }
 
                     let inner_loop_context = LoopContext {
@@ -4348,17 +4338,13 @@ impl BlockContext<'_> {
                     let cond_id = self.gen_id();
                     let body_id = self.gen_id();
 
-                    self.function
-                        .consume(block, Instruction::branch(cond_id));
+                    self.function.consume(block, Instruction::branch(cond_id));
 
                     // Condition block: evaluate condition then branch.
                     let _ = self.write_block(
                         cond_id,
                         condition_block,
-                        BlockExit::ConditionLoop {
-                            condition,
-                            body_id,
-                        },
+                        BlockExit::ConditionLoop { condition, body_id },
                         inner_loop_context,
                         debug_info,
                     )?;
@@ -4418,10 +4404,7 @@ impl BlockContext<'_> {
                     preamble_id,
                 )
             }
-            BlockExit::ConditionLoop {
-                condition,
-                body_id,
-            } => {
+            BlockExit::ConditionLoop { condition, body_id } => {
                 let condition_id = self.cached[condition];
 
                 Instruction::branch_conditional(

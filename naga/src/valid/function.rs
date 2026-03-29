@@ -1802,9 +1802,7 @@ impl super::Validator {
                         .stages;
 
                     if let Some(condition) = condition {
-                        match *context
-                            .resolve_type_inner(condition, &self.valid_expression_set)?
-                        {
+                        match *context.resolve_type_inner(condition, &self.valid_expression_set)? {
                             Ti::Scalar(crate::Scalar {
                                 kind: crate::ScalarKind::Bool,
                                 width: _,
@@ -1848,9 +1846,7 @@ impl super::Validator {
                         )?
                         .stages;
 
-                    match *context
-                        .resolve_type_inner(condition, &self.valid_expression_set)?
-                    {
+                    match *context.resolve_type_inner(condition, &self.valid_expression_set)? {
                         Ti::Scalar(crate::Scalar {
                             kind: crate::ScalarKind::Bool,
                             width: _,
