@@ -31,31 +31,17 @@ void test_atomic_compare_exchange_i64_()
 
     i = 0u;
     uint2 loop_bound = uint2(4294967295u, 4294967295u);
-    bool loop_init = true;
-    while(true) {
+    for(; (i < SIZE); i = (i + 1u)) {
         if (all(loop_bound == uint2(0u, 0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
-        if (!loop_init) {
-            uint _e26 = i;
-            i = (_e26 + 1u);
-        }
-        loop_init = false;
-        uint _e2 = i;
-        if (!((_e2 < SIZE))) {
-            break;
-        }
         uint _e6 = i;
         int64_t _e8 = arr_i64_.Load<int64_t>(_e6*8);
         old = _e8;
         exchanged = false;
         uint2 loop_bound_1 = uint2(4294967295u, 4294967295u);
-        while(true) {
+        while(!(exchanged)) {
             if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
-            bool _e12 = exchanged;
-            if (!(!(_e12))) {
-                break;
-            }
             int64_t _e14 = old;
             int64_t new_ = (_e14 + 10L);
             uint _e19 = i;
@@ -78,31 +64,17 @@ void test_atomic_compare_exchange_u64_()
 
     i_1 = 0u;
     uint2 loop_bound_2 = uint2(4294967295u, 4294967295u);
-    bool loop_init_1 = true;
-    while(true) {
+    for(; (i_1 < SIZE); i_1 = (i_1 + 1u)) {
         if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
-        if (!loop_init_1) {
-            uint _e26 = i_1;
-            i_1 = (_e26 + 1u);
-        }
-        loop_init_1 = false;
-        uint _e2 = i_1;
-        if (!((_e2 < SIZE))) {
-            break;
-        }
         uint _e6 = i_1;
         uint64_t _e8 = arr_u64_.Load<uint64_t>(_e6*8);
         old_1 = _e8;
         exchanged_1 = false;
         uint2 loop_bound_3 = uint2(4294967295u, 4294967295u);
-        while(true) {
+        while(!(exchanged_1)) {
             if (all(loop_bound_3 == uint2(0u, 0u))) { break; }
             loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
-            bool _e12 = exchanged_1;
-            if (!(!(_e12))) {
-                break;
-            }
             uint64_t _e14 = old_1;
             uint64_t new_1 = (_e14 + 10uL);
             uint _e19 = i_1;

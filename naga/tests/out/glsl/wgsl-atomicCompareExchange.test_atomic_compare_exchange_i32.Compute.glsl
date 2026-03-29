@@ -23,26 +23,12 @@ void main() {
     int old = 0;
     bool exchanged = false;
     i = 0u;
-    bool loop_init = true;
-    while(true) {
-        if (!loop_init) {
-            uint _e27 = i;
-            i = (_e27 + 1u);
-        }
-        loop_init = false;
-        uint _e2 = i;
-        if (!((_e2 < SIZE))) {
-            break;
-        }
+    for(; (i < SIZE); i = (i + 1u)) {
         uint _e6 = i;
         int _e8 = _group_0_binding_0_cs[_e6];
         old = _e8;
         exchanged = false;
-        while(true) {
-            bool _e12 = exchanged;
-            if (!(!(_e12))) {
-                break;
-            }
+        while(!(exchanged)) {
             int _e14 = old;
             int new = floatBitsToInt((intBitsToFloat(_e14) + 1.0));
             uint _e20 = i;

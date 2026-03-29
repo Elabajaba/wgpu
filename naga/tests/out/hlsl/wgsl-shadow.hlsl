@@ -97,20 +97,9 @@ float4 fs_main(FragmentInput_fs_main fragmentinput_fs_main) : SV_Target0
     float3 normal_1 = normalize(in_.world_normal);
     i = 0u;
     uint2 loop_bound = uint2(4294967295u, 4294967295u);
-    bool loop_init = true;
-    while(true) {
+    for(; (i < min(u_globals.num_lights.x, c_max_lights)); i = (i + 1u)) {
         if (all(loop_bound == uint2(0u, 0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
-        if (!loop_init) {
-            uint _e40 = i;
-            i = (_e40 + 1u);
-        }
-        loop_init = false;
-        uint _e7 = i;
-        uint _e11 = u_globals.num_lights.x;
-        if (!((_e7 < min(_e11, c_max_lights)))) {
-            break;
-        }
         uint _e16 = i;
         Light light = ConstructLight(float4x4(asfloat(s_lights.Load4(_e16*96+0+0)), asfloat(s_lights.Load4(_e16*96+0+16)), asfloat(s_lights.Load4(_e16*96+0+32)), asfloat(s_lights.Load4(_e16*96+0+48))), asfloat(s_lights.Load4(_e16*96+64)), asfloat(s_lights.Load4(_e16*96+80)));
         uint _e19 = i;
@@ -134,20 +123,9 @@ float4 fs_main_without_storage(FragmentInput_fs_main_without_storage fragmentinp
     float3 normal_2 = normalize(in_1.world_normal);
     i_1 = 0u;
     uint2 loop_bound_1 = uint2(4294967295u, 4294967295u);
-    bool loop_init_1 = true;
-    while(true) {
+    for(; (i_1 < min(u_globals.num_lights.x, c_max_lights)); i_1 = (i_1 + 1u)) {
         if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
-        if (!loop_init_1) {
-            uint _e40 = i_1;
-            i_1 = (_e40 + 1u);
-        }
-        loop_init_1 = false;
-        uint _e7 = i_1;
-        uint _e11 = u_globals.num_lights.x;
-        if (!((_e7 < min(_e11, c_max_lights)))) {
-            break;
-        }
         uint _e16 = i_1;
         Light light_1 = u_lights[_e16];
         uint _e19 = i_1;

@@ -2167,6 +2167,52 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
 
     /// Helper method used to write statements
     ///
+    /// Write the update portion of a `for` header inline (no semicolons/newlines).
+    fn write_for_update_inline(
+        &mut self,
+        module: &Module,
+        block: &crate::Block,
+        func_ctx: &back::FunctionCtx<'_>,
+    ) -> BackendResult {
+        use crate::Statement;
+        let mut first = true;
+        for sta in block.iter() {
+            match *sta {
+                Statement::Emit(_) => {}
+                Statement::Store { pointer, value } => {
+                    if !first {
+                        write!(self.out, ", ")?;
+                    }
+                    first = false;
+                    self.write_expr(module, pointer, func_ctx)?;
+                    write!(self.out, " = ")?;
+                    self.write_expr(module, value, func_ctx)?;
+                }
+                Statement::Call {
+                    function,
+                    ref arguments,
+                    ..
+                } => {
+                    if !first {
+                        write!(self.out, ", ")?;
+                    }
+                    first = false;
+                    let name = &self.names[&NameKey::Function(function)];
+                    write!(self.out, "{name}(")?;
+                    for (i, &arg) in arguments.iter().enumerate() {
+                        if i != 0 {
+                            write!(self.out, ", ")?;
+                        }
+                        self.write_expr(module, arg, func_ctx)?;
+                    }
+                    write!(self.out, ")")?;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
     /// # Notes
     /// Always adds a newline
     fn write_stmt(
@@ -3002,48 +3048,75 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                 ref update,
                 ref body,
             } => {
+                let cond_simple = condition_block
+                    .iter()
+                    .all(|s| matches!(s, Statement::Emit(_)));
+                let update_simple = update.iter().all(|s| {
+                    matches!(
+                        s,
+                        Statement::Emit(_) | Statement::Store { .. } | Statement::Call { .. }
+                    )
+                });
+
                 for sta in initializer.iter() {
                     self.write_stmt(module, sta, func_ctx, level)?;
                 }
                 let force_loop_bound_statements = self.gen_force_bounded_loop_statements(level);
-                let gate_name = (!update.is_empty()).then(|| self.namer.call("loop_init"));
-
                 if let Some((ref decl, _)) = force_loop_bound_statements {
                     writeln!(self.out, "{decl}")?;
                 }
-                if let Some(ref gate_name) = gate_name {
-                    writeln!(self.out, "{level}bool {gate_name} = true;")?;
-                }
 
                 self.continue_ctx.enter_loop();
-                writeln!(self.out, "{level}while(true) {{")?;
-                if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
-                    writeln!(self.out, "{break_and_inc}")?;
-                }
-                let l2 = level.next();
-                if let Some(gate_name) = gate_name {
-                    writeln!(self.out, "{l2}if (!{gate_name}) {{")?;
-                    let l3 = l2.next();
-                    for sta in update.iter() {
-                        self.write_stmt(module, sta, func_ctx, l3)?;
+
+                if cond_simple && update_simple {
+                    write!(self.out, "{level}for(; ")?;
+                    if let Some(condition) = condition {
+                        self.write_expr(module, condition, func_ctx)?;
                     }
-                    writeln!(self.out, "{l2}}}")?;
-                    writeln!(self.out, "{l2}{gate_name} = false;")?;
+                    write!(self.out, "; ")?;
+                    self.write_for_update_inline(module, update, func_ctx)?;
+                    writeln!(self.out, ") {{")?;
+                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
+                        writeln!(self.out, "{break_and_inc}")?;
+                    }
+                    for sta in body.iter() {
+                        self.write_stmt(module, sta, func_ctx, level.next())?;
+                    }
+                    writeln!(self.out, "{level}}}")?;
+                } else {
+                    let gate_name =
+                        (!update.is_empty()).then(|| self.namer.call("loop_init"));
+                    if let Some(ref gate_name) = gate_name {
+                        writeln!(self.out, "{level}bool {gate_name} = true;")?;
+                    }
+                    writeln!(self.out, "{level}while(true) {{")?;
+                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
+                        writeln!(self.out, "{break_and_inc}")?;
+                    }
+                    let l2 = level.next();
+                    if let Some(gate_name) = gate_name {
+                        writeln!(self.out, "{l2}if (!{gate_name}) {{")?;
+                        for sta in update.iter() {
+                            self.write_stmt(module, sta, func_ctx, l2.next())?;
+                        }
+                        writeln!(self.out, "{l2}}}")?;
+                        writeln!(self.out, "{l2}{gate_name} = false;")?;
+                    }
+                    for sta in condition_block.iter() {
+                        self.write_stmt(module, sta, func_ctx, l2)?;
+                    }
+                    if let Some(condition) = condition {
+                        write!(self.out, "{l2}if (!(")?;
+                        self.write_expr(module, condition, func_ctx)?;
+                        writeln!(self.out, ")) {{")?;
+                        writeln!(self.out, "{}break;", l2.next())?;
+                        writeln!(self.out, "{l2}}}")?;
+                    }
+                    for sta in body.iter() {
+                        self.write_stmt(module, sta, func_ctx, l2)?;
+                    }
+                    writeln!(self.out, "{level}}}")?;
                 }
-                for sta in condition_block.iter() {
-                    self.write_stmt(module, sta, func_ctx, l2)?;
-                }
-                if let Some(condition) = condition {
-                    write!(self.out, "{l2}if (!(")?;
-                    self.write_expr(module, condition, func_ctx)?;
-                    writeln!(self.out, ")) {{")?;
-                    writeln!(self.out, "{}break;", l2.next())?;
-                    writeln!(self.out, "{l2}}}")?;
-                }
-                for sta in body.iter() {
-                    self.write_stmt(module, sta, func_ctx, l2)?;
-                }
-                writeln!(self.out, "{level}}}")?;
                 self.continue_ctx.exit_loop();
             }
             Statement::WhileLoop {
@@ -3051,30 +3124,46 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                 ref condition_block,
                 ref body,
             } => {
+                let cond_simple = condition_block
+                    .iter()
+                    .all(|s| matches!(s, Statement::Emit(_)));
                 let force_loop_bound_statements = self.gen_force_bounded_loop_statements(level);
-
                 if let Some((ref decl, _)) = force_loop_bound_statements {
                     writeln!(self.out, "{decl}")?;
                 }
 
                 self.continue_ctx.enter_loop();
-                writeln!(self.out, "{level}while(true) {{")?;
-                if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
-                    writeln!(self.out, "{break_and_inc}")?;
+
+                if cond_simple {
+                    write!(self.out, "{level}while(")?;
+                    self.write_expr(module, condition, func_ctx)?;
+                    writeln!(self.out, ") {{")?;
+                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
+                        writeln!(self.out, "{break_and_inc}")?;
+                    }
+                    for sta in body.iter() {
+                        self.write_stmt(module, sta, func_ctx, level.next())?;
+                    }
+                    writeln!(self.out, "{level}}}")?;
+                } else {
+                    writeln!(self.out, "{level}while(true) {{")?;
+                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
+                        writeln!(self.out, "{break_and_inc}")?;
+                    }
+                    let l2 = level.next();
+                    for sta in condition_block.iter() {
+                        self.write_stmt(module, sta, func_ctx, l2)?;
+                    }
+                    write!(self.out, "{l2}if (!(")?;
+                    self.write_expr(module, condition, func_ctx)?;
+                    writeln!(self.out, ")) {{")?;
+                    writeln!(self.out, "{}break;", l2.next())?;
+                    writeln!(self.out, "{l2}}}")?;
+                    for sta in body.iter() {
+                        self.write_stmt(module, sta, func_ctx, l2)?;
+                    }
+                    writeln!(self.out, "{level}}}")?;
                 }
-                let l2 = level.next();
-                for sta in condition_block.iter() {
-                    self.write_stmt(module, sta, func_ctx, l2)?;
-                }
-                write!(self.out, "{l2}if (!(")?;
-                self.write_expr(module, condition, func_ctx)?;
-                writeln!(self.out, ")) {{")?;
-                writeln!(self.out, "{}break;", l2.next())?;
-                writeln!(self.out, "{l2}}}")?;
-                for sta in body.iter() {
-                    self.write_stmt(module, sta, func_ctx, l2)?;
-                }
-                writeln!(self.out, "{level}}}")?;
                 self.continue_ctx.exit_loop();
             }
         }

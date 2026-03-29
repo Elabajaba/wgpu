@@ -80,31 +80,17 @@ kernel void test_atomic_compare_exchange_i32_(
     bool exchanged = {};
     i = 0u;
     uint2 loop_bound = uint2(4294967295u);
-    bool loop_init = true;
-    while(true) {
+    for(; i < SIZE; i = i + 1u) {
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
-        if (!loop_init) {
-            uint _e27 = i;
-            i = _e27 + 1u;
-        }
-        loop_init = false;
-        uint _e2 = i;
-        if (!(i < SIZE)) {
-            break;
-        }
         uint _e6 = i;
         int _e8 = metal::atomic_load_explicit(&arr_i32_.inner[_e6], metal::memory_order_relaxed);
         old = _e8;
         exchanged = false;
         uint2 loop_bound_1 = uint2(4294967295u);
-        while(true) {
+        while(!(exchanged)) {
             if (metal::all(loop_bound_1 == uint2(0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
-            bool _e12 = exchanged;
-            if (!(!(exchanged))) {
-                break;
-            }
             int _e14 = old;
             int new_ = as_type<int>(as_type<float>(_e14) + 1.0);
             uint _e20 = i;
@@ -126,31 +112,17 @@ kernel void test_atomic_compare_exchange_u32_(
     bool exchanged_1 = {};
     i_1 = 0u;
     uint2 loop_bound_2 = uint2(4294967295u);
-    bool loop_init_1 = true;
-    while(true) {
+    for(; i_1 < SIZE; i_1 = i_1 + 1u) {
         if (metal::all(loop_bound_2 == uint2(0u))) { break; }
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
-        if (!loop_init_1) {
-            uint _e27 = i_1;
-            i_1 = _e27 + 1u;
-        }
-        loop_init_1 = false;
-        uint _e2 = i_1;
-        if (!(i_1 < SIZE)) {
-            break;
-        }
         uint _e6 = i_1;
         uint _e8 = metal::atomic_load_explicit(&arr_u32_.inner[_e6], metal::memory_order_relaxed);
         old_1 = _e8;
         exchanged_1 = false;
         uint2 loop_bound_3 = uint2(4294967295u);
-        while(true) {
+        while(!(exchanged_1)) {
             if (metal::all(loop_bound_3 == uint2(0u))) { break; }
             loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
-            bool _e12 = exchanged_1;
-            if (!(!(exchanged_1))) {
-                break;
-            }
             uint _e14 = old_1;
             uint new_1 = as_type<uint>(as_type<float>(_e14) + 1.0);
             uint _e20 = i_1;

@@ -53,18 +53,7 @@ void main() {
     uint i = 0u;
     vec3 normal_1 = normalize(in_.world_normal);
     i = 0u;
-    bool loop_init = true;
-    while(true) {
-        if (!loop_init) {
-            uint _e40 = i;
-            i = (_e40 + 1u);
-        }
-        loop_init = false;
-        uint _e7 = i;
-        uint _e11 = _group_0_binding_0_fs.num_lights.x;
-        if (!((_e7 < min(_e11, c_max_lights)))) {
-            break;
-        }
+    for(; (i < min(_group_0_binding_0_fs.num_lights.x, c_max_lights)); i = (i + 1u)) {
         uint _e16 = i;
         Light light = _group_0_binding_1_fs[_e16];
         uint _e19 = i;

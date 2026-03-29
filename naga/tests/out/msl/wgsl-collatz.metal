@@ -28,13 +28,9 @@ uint collatz_iterations(
     uint i = 0u;
     n = n_base;
     uint2 loop_bound = uint2(4294967295u);
-    while(true) {
+    while(n > 1u) {
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
-        uint _e4 = n;
-        if (!(n > 1u)) {
-            break;
-        }
         uint _e7 = n;
         if (naga_mod(_e7, 2u) == 0u) {
             uint _e12 = n;

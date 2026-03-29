@@ -102,20 +102,9 @@ fragment fs_mainOutput fs_main(
     metal::float3 normal_1 = metal::normalize(in.world_normal);
     i = 0u;
     uint2 loop_bound = uint2(4294967295u);
-    bool loop_init = true;
-    while(true) {
+    for(; i < metal::min(u_globals.num_lights.x, c_max_lights); i = i + 1u) {
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
-        if (!loop_init) {
-            uint _e40 = i;
-            i = _e40 + 1u;
-        }
-        loop_init = false;
-        uint _e7 = i;
-        uint _e11 = u_globals.num_lights.x;
-        if (!(i < metal::min(u_globals.num_lights.x, c_max_lights))) {
-            break;
-        }
         uint _e16 = i;
         Light light = s_lights[_e16];
         uint _e19 = i;
@@ -153,20 +142,9 @@ fragment fs_main_without_storageOutput fs_main_without_storage(
     metal::float3 normal_2 = metal::normalize(in_1.world_normal);
     i_1 = 0u;
     uint2 loop_bound_1 = uint2(4294967295u);
-    bool loop_init_1 = true;
-    while(true) {
+    for(; i_1 < metal::min(u_globals.num_lights.x, c_max_lights); i_1 = i_1 + 1u) {
         if (metal::all(loop_bound_1 == uint2(0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
-        if (!loop_init_1) {
-            uint _e40 = i_1;
-            i_1 = _e40 + 1u;
-        }
-        loop_init_1 = false;
-        uint _e7 = i_1;
-        uint _e11 = u_globals.num_lights.x;
-        if (!(i_1 < metal::min(u_globals.num_lights.x, c_max_lights))) {
-            break;
-        }
         uint _e16 = i_1;
         Light light_1 = u_lights.inner[_e16];
         uint _e19 = i_1;

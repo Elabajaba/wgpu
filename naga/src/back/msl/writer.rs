@@ -3669,6 +3669,51 @@ impl<W: Write> Writer<W> {
         Ok(())
     }
 
+    /// Write the update portion of a `for` header inline (no semicolons/newlines).
+    fn put_for_update_inline(
+        &mut self,
+        block: &crate::Block,
+        context: &StatementContext,
+    ) -> BackendResult {
+        let mut first = true;
+        for sta in block.iter() {
+            match *sta {
+                crate::Statement::Emit(_) => {}
+                crate::Statement::Store { pointer, value } => {
+                    if !first {
+                        write!(self.out, ", ")?;
+                    }
+                    first = false;
+                    self.put_expression(pointer, &context.expression, true)?;
+                    write!(self.out, " = ")?;
+                    self.put_expression(value, &context.expression, true)?;
+                }
+                crate::Statement::Call {
+                    function,
+                    ref arguments,
+                    ..
+                } => {
+                    if !first {
+                        write!(self.out, ", ")?;
+                    }
+                    first = false;
+                    let name = &self.names
+                        [&NameKey::Function(function)];
+                    write!(self.out, "{name}(")?;
+                    for (i, &arg) in arguments.iter().enumerate() {
+                        if i != 0 {
+                            write!(self.out, ", ")?;
+                        }
+                        self.put_expression(arg, &context.expression, true)?;
+                    }
+                    write!(self.out, ")")?;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
     fn put_block(
         &mut self,
         level: back::Level,
@@ -4345,68 +4390,115 @@ impl<W: Write> Writer<W> {
                     ref update,
                     ref body,
                 } => {
+                    let cond_simple = condition_block
+                        .iter()
+                        .all(|s| matches!(s, crate::Statement::Emit(_)));
+                    let update_simple = update.iter().all(|s| {
+                        matches!(
+                            s,
+                            crate::Statement::Emit(_)
+                                | crate::Statement::Store { .. }
+                                | crate::Statement::Call { .. }
+                        )
+                    });
+
                     self.put_block(level, initializer, context)?;
                     let force_loop_bound_statements =
                         self.gen_force_bounded_loop_statements(level, context);
-                    let gate_name =
-                        (!update.is_empty()).then(|| self.namer.call("loop_init"));
-
                     if let Some((ref decl, _)) = force_loop_bound_statements {
                         writeln!(self.out, "{decl}")?;
                     }
-                    if let Some(ref gate_name) = gate_name {
-                        writeln!(self.out, "{level}bool {gate_name} = true;")?;
-                    }
 
-                    writeln!(self.out, "{level}while(true) {{")?;
-                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
-                        writeln!(self.out, "{break_and_inc}")?;
+                    if cond_simple && update_simple {
+                        write!(self.out, "{level}for(; ")?;
+                        if let Some(condition) = condition {
+                            self.put_expression(condition, &context.expression, true)?;
+                        }
+                        write!(self.out, "; ")?;
+                        self.put_for_update_inline(update, context)?;
+                        writeln!(self.out, ") {{")?;
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
+                        {
+                            writeln!(self.out, "{break_and_inc}")?;
+                        }
+                        self.put_block(level.next(), body, context)?;
+                        writeln!(self.out, "{level}}}")?;
+                    } else {
+                        let gate_name =
+                            (!update.is_empty()).then(|| self.namer.call("loop_init"));
+                        if let Some(ref gate_name) = gate_name {
+                            writeln!(self.out, "{level}bool {gate_name} = true;")?;
+                        }
+                        writeln!(self.out, "{level}while(true) {{")?;
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
+                        {
+                            writeln!(self.out, "{break_and_inc}")?;
+                        }
+                        if let Some(ref gate_name) = gate_name {
+                            let lif = level.next();
+                            let lupdate = lif.next();
+                            writeln!(self.out, "{lif}if (!{gate_name}) {{")?;
+                            self.put_block(lupdate, update, context)?;
+                            writeln!(self.out, "{lif}}}")?;
+                            writeln!(self.out, "{lif}{gate_name} = false;")?;
+                        }
+                        self.put_block(level.next(), condition_block, context)?;
+                        if let Some(condition) = condition {
+                            let lif = level.next();
+                            write!(self.out, "{lif}if (!(")?;
+                            self.put_expression(
+                                condition,
+                                &context.expression,
+                                true,
+                            )?;
+                            writeln!(self.out, ")) {{")?;
+                            writeln!(self.out, "{}break;", lif.next())?;
+                            writeln!(self.out, "{lif}}}")?;
+                        }
+                        self.put_block(level.next(), body, context)?;
+                        writeln!(self.out, "{level}}}")?;
                     }
-                    if let Some(ref gate_name) = gate_name {
-                        let lif = level.next();
-                        let lupdate = lif.next();
-                        writeln!(self.out, "{lif}if (!{gate_name}) {{")?;
-                        self.put_block(lupdate, update, context)?;
-                        writeln!(self.out, "{lif}}}")?;
-                        writeln!(self.out, "{lif}{gate_name} = false;")?;
-                    }
-                    self.put_block(level.next(), condition_block, context)?;
-                    if let Some(condition) = condition {
-                        let lif = level.next();
-                        write!(self.out, "{lif}if (!(")?;
-                        self.put_expression(condition, &context.expression, true)?;
-                        writeln!(self.out, ")) {{")?;
-                        writeln!(self.out, "{}break;", lif.next())?;
-                        writeln!(self.out, "{lif}}}")?;
-                    }
-                    self.put_block(level.next(), body, context)?;
-                    writeln!(self.out, "{level}}}")?;
                 }
                 crate::Statement::WhileLoop {
                     condition,
                     ref condition_block,
                     ref body,
                 } => {
+                    let cond_simple = condition_block
+                        .iter()
+                        .all(|s| matches!(s, crate::Statement::Emit(_)));
                     let force_loop_bound_statements =
                         self.gen_force_bounded_loop_statements(level, context);
-
                     if let Some((ref decl, _)) = force_loop_bound_statements {
                         writeln!(self.out, "{decl}")?;
                     }
 
-                    writeln!(self.out, "{level}while(true) {{")?;
-                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
-                        writeln!(self.out, "{break_and_inc}")?;
+                    if cond_simple {
+                        write!(self.out, "{level}while(")?;
+                        self.put_expression(condition, &context.expression, true)?;
+                        writeln!(self.out, ") {{")?;
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
+                        {
+                            writeln!(self.out, "{break_and_inc}")?;
+                        }
+                        self.put_block(level.next(), body, context)?;
+                        writeln!(self.out, "{level}}}")?;
+                    } else {
+                        writeln!(self.out, "{level}while(true) {{")?;
+                        if let Some((_, ref break_and_inc)) = force_loop_bound_statements
+                        {
+                            writeln!(self.out, "{break_and_inc}")?;
+                        }
+                        self.put_block(level.next(), condition_block, context)?;
+                        let lif = level.next();
+                        write!(self.out, "{lif}if (!(")?;
+                        self.put_expression(condition, &context.expression, true)?;
+                        writeln!(self.out, ")) {{")?;
+                        writeln!(self.out, "{}break;", lif.next())?;
+                        writeln!(self.out, "{lif}}}")?;
+                        self.put_block(level.next(), body, context)?;
+                        writeln!(self.out, "{level}}}")?;
                     }
-                    self.put_block(level.next(), condition_block, context)?;
-                    let lif = level.next();
-                    write!(self.out, "{lif}if (!(")?;
-                    self.put_expression(condition, &context.expression, true)?;
-                    writeln!(self.out, ")) {{")?;
-                    writeln!(self.out, "{}break;", lif.next())?;
-                    writeln!(self.out, "{lif}}}")?;
-                    self.put_block(level.next(), body, context)?;
-                    writeln!(self.out, "{level}}}")?;
                 }
             }
         }
