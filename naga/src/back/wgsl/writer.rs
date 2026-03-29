@@ -1344,17 +1344,7 @@ impl<W: Write> Writer<W> {
             } => {
                 // Check if we can emit native `for` syntax: condition_block
                 // and update must contain only Emit + Store/Call statements.
-                let cond_block_simple = condition_block
-                    .iter()
-                    .all(|s| matches!(s, Statement::Emit(_)));
-                let update_simple = update.iter().all(|s| {
-                    matches!(
-                        s,
-                        Statement::Emit(_) | Statement::Store { .. } | Statement::Call { .. }
-                    )
-                });
-
-                if cond_block_simple && update_simple {
+                if back::is_native_for_loop(condition_block, update) {
                     write!(self.out, "{level}for (")?;
                     self.write_for_header_init(module, initializer, func_ctx)?;
                     write!(self.out, "; ")?;
