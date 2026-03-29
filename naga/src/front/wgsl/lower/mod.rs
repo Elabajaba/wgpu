@@ -2085,6 +2085,8 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
                     break_if,
                 }
             }
+            ast::StatementKind::ForLoop { .. } => todo!("lower ForLoop"),
+            ast::StatementKind::WhileLoop { .. } => todo!("lower WhileLoop"),
             ast::StatementKind::Break => ir::Statement::Break,
             ast::StatementKind::Continue => ir::Statement::Continue,
             ast::StatementKind::Return { value: ast_value } => {
