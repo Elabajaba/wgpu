@@ -1045,10 +1045,8 @@ impl<W: Write> Writer<W> {
     /// The names of the OOB locals are also added to `self.names` at the same
     /// time.
     fn put_locals(&mut self, context: &ExpressionContext) -> BackendResult {
-        let for_init_vars = back::collect_for_init_variables(
-            &context.function.body,
-            &context.function.expressions,
-        );
+        let for_init_vars =
+            back::collect_for_init_variables(&context.function.body, &context.function.expressions);
 
         let oob_local_types = context.oob_local_types();
         for &ty in oob_local_types.iter() {
@@ -4425,25 +4423,13 @@ impl<W: Write> Writer<W> {
                     ref update,
                     ref body,
                 } => {
-                    let cond_simple = condition_block
-                        .iter()
-                        .all(|s| matches!(s, crate::Statement::Emit(_)));
-                    let update_simple = update.iter().all(|s| {
-                        matches!(
-                            s,
-                            crate::Statement::Emit(_)
-                                | crate::Statement::Store { .. }
-                                | crate::Statement::Call { .. }
-                        )
-                    });
-
                     let force_loop_bound_statements =
                         self.gen_force_bounded_loop_statements(level, context);
                     if let Some((ref decl, _)) = force_loop_bound_statements {
                         writeln!(self.out, "{decl}")?;
                     }
 
-                    if cond_simple && update_simple {
+                    if back::is_native_for_loop(condition_block, update) {
                         write!(self.out, "{level}for(")?;
                         self.put_for_header_init(initializer, context)?;
                         write!(self.out, "; ")?;

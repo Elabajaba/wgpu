@@ -2183,9 +2183,7 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
         use crate::{Expression, Statement};
         let func = match func_ctx.ty {
             back::FunctionType::Function(handle) => &module.functions[handle],
-            back::FunctionType::EntryPoint(index) => {
-                &module.entry_points[index as usize].function
-            }
+            back::FunctionType::EntryPoint(index) => &module.entry_points[index as usize].function,
         };
         for sta in block.iter() {
             if let Statement::Store { pointer, value } = *sta {
@@ -3086,16 +3084,6 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                 ref update,
                 ref body,
             } => {
-                let cond_simple = condition_block
-                    .iter()
-                    .all(|s| matches!(s, Statement::Emit(_)));
-                let update_simple = update.iter().all(|s| {
-                    matches!(
-                        s,
-                        Statement::Emit(_) | Statement::Store { .. } | Statement::Call { .. }
-                    )
-                });
-
                 let force_loop_bound_statements = self.gen_force_bounded_loop_statements(level);
                 if let Some((ref decl, _)) = force_loop_bound_statements {
                     writeln!(self.out, "{decl}")?;
@@ -3103,7 +3091,7 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
 
                 self.continue_ctx.enter_loop();
 
-                if cond_simple && update_simple {
+                if back::is_native_for_loop(condition_block, update) {
                     write!(self.out, "{level}for(")?;
                     self.write_for_header_init(module, initializer, func_ctx)?;
                     write!(self.out, "; ")?;

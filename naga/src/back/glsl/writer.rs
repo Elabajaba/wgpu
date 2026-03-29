@@ -1607,13 +1607,19 @@ impl<'a, W: Write> Writer<'a, W> {
                             // Entry points don't have for-loop inits in practice,
                             // but handle it for correctness.
                             write!(self.out, "{}", back::INDENT)?;
-                            self.write_type(self.module.entry_points[idx as usize].function.local_variables[var].ty)?;
+                            self.write_type(
+                                self.module.entry_points[idx as usize]
+                                    .function
+                                    .local_variables[var]
+                                    .ty,
+                            )?;
                             write!(self.out, " {}", self.names[&ctx.name_key(var)])?;
                             write!(self.out, " = ")?;
                             self.write_expr(value, ctx)?;
                             return Ok(());
                         }
-                    }].local_variables[var];
+                    }]
+                    .local_variables[var];
                     self.write_type(local.ty)?;
                     write!(self.out, " {}", self.names[&ctx.name_key(var)])?;
                     if let TypeInner::Array { base, size, .. } = self.module.types[local.ty].inner {
@@ -2350,19 +2356,9 @@ impl<'a, W: Write> Writer<'a, W> {
                 ref update,
                 ref body,
             } => {
-                let cond_simple = condition_block
-                    .iter()
-                    .all(|s| matches!(s, Statement::Emit(_)));
-                let update_simple = update.iter().all(|s| {
-                    matches!(
-                        s,
-                        Statement::Emit(_) | Statement::Store { .. } | Statement::Call { .. }
-                    )
-                });
-
                 self.continue_ctx.enter_loop();
 
-                if cond_simple && update_simple {
+                if back::is_native_for_loop(condition_block, update) {
                     // Native for loop — `continue` jumps to the update naturally.
                     write!(self.out, "{level}for(")?;
                     self.write_for_header_init(initializer, ctx)?;
