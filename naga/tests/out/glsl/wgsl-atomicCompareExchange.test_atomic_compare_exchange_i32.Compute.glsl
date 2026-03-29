@@ -22,6 +22,7 @@ void main() {
     uint i = 0u;
     int old = 0;
     bool exchanged = false;
+    i = 0u;
     bool loop_init = true;
     while(true) {
         if (!loop_init) {
@@ -30,32 +31,26 @@ void main() {
         }
         loop_init = false;
         uint _e2 = i;
-        if ((_e2 < SIZE)) {
-        } else {
+        if (!((_e2 < SIZE))) {
             break;
         }
-        {
-            uint _e6 = i;
-            int _e8 = _group_0_binding_0_cs[_e6];
-            old = _e8;
-            exchanged = false;
-            while(true) {
-                bool _e12 = exchanged;
-                if (!(_e12)) {
-                } else {
-                    break;
-                }
-                {
-                    int _e14 = old;
-                    int new = floatBitsToInt((intBitsToFloat(_e14) + 1.0));
-                    uint _e20 = i;
-                    int _e22 = old;
-                    _atomic_compare_exchange_result_Sint_4_ _e23; _e23.old_value = atomicCompSwap(_group_0_binding_0_cs[_e20], _e22, new);
-                    _e23.exchanged = (_e23.old_value == _e22);
-                    old = _e23.old_value;
-                    exchanged = _e23.exchanged;
-                }
+        uint _e6 = i;
+        int _e8 = _group_0_binding_0_cs[_e6];
+        old = _e8;
+        exchanged = false;
+        while(true) {
+            bool _e12 = exchanged;
+            if (!(!(_e12))) {
+                break;
             }
+            int _e14 = old;
+            int new = floatBitsToInt((intBitsToFloat(_e14) + 1.0));
+            uint _e20 = i;
+            int _e22 = old;
+            _atomic_compare_exchange_result_Sint_4_ _e23; _e23.old_value = atomicCompSwap(_group_0_binding_0_cs[_e20], _e22, new);
+            _e23.exchanged = (_e23.old_value == _e22);
+            old = _e23.old_value;
+            exchanged = _e23.exchanged;
         }
     }
     return;

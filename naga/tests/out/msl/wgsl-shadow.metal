@@ -98,8 +98,9 @@ fragment fs_mainOutput fs_main(
 ) {
     const VertexOutput in = { proj_position, varyings_1.world_normal, varyings_1.world_position };
     metal::float3 color = c_ambient;
-    uint i = 0u;
+    uint i = {};
     metal::float3 normal_1 = metal::normalize(in.world_normal);
+    i = 0u;
     uint2 loop_bound = uint2(4294967295u);
     bool loop_init = true;
     while(true) {
@@ -112,20 +113,17 @@ fragment fs_mainOutput fs_main(
         loop_init = false;
         uint _e7 = i;
         uint _e11 = u_globals.num_lights.x;
-        if (_e7 < metal::min(_e11, c_max_lights)) {
-        } else {
+        if (!(i < metal::min(u_globals.num_lights.x, c_max_lights))) {
             break;
         }
-        {
-            uint _e16 = i;
-            Light light = s_lights[_e16];
-            uint _e19 = i;
-            float _e23 = fetch_shadow(_e19, light.proj * in.world_position, t_shadow, sampler_shadow);
-            metal::float3 light_dir = metal::normalize(light.pos.xyz - in.world_position.xyz);
-            float diffuse = metal::max(0.0, metal::dot(normal_1, light_dir));
-            metal::float3 _e33 = color;
-            color = _e33 + ((_e23 * diffuse) * light.color.xyz);
-        }
+        uint _e16 = i;
+        Light light = s_lights[_e16];
+        uint _e19 = i;
+        float _e23 = fetch_shadow(_e19, light.proj * in.world_position, t_shadow, sampler_shadow);
+        metal::float3 light_dir = metal::normalize(light.pos.xyz - in.world_position.xyz);
+        float diffuse = metal::max(0.0, metal::dot(normal_1, light_dir));
+        metal::float3 _e33 = color;
+        color = _e33 + ((_e23 * diffuse) * light.color.xyz);
     }
     metal::float3 _e42 = color;
     metal::float4 _e47 = u_entity.color;
@@ -151,8 +149,9 @@ fragment fs_main_without_storageOutput fs_main_without_storage(
 ) {
     const VertexOutput in_1 = { proj_position_1, varyings_2.world_normal, varyings_2.world_position };
     metal::float3 color_1 = c_ambient;
-    uint i_1 = 0u;
+    uint i_1 = {};
     metal::float3 normal_2 = metal::normalize(in_1.world_normal);
+    i_1 = 0u;
     uint2 loop_bound_1 = uint2(4294967295u);
     bool loop_init_1 = true;
     while(true) {
@@ -165,20 +164,17 @@ fragment fs_main_without_storageOutput fs_main_without_storage(
         loop_init_1 = false;
         uint _e7 = i_1;
         uint _e11 = u_globals.num_lights.x;
-        if (_e7 < metal::min(_e11, c_max_lights)) {
-        } else {
+        if (!(i_1 < metal::min(u_globals.num_lights.x, c_max_lights))) {
             break;
         }
-        {
-            uint _e16 = i_1;
-            Light light_1 = u_lights.inner[_e16];
-            uint _e19 = i_1;
-            float _e23 = fetch_shadow(_e19, light_1.proj * in_1.world_position, t_shadow, sampler_shadow);
-            metal::float3 light_dir_1 = metal::normalize(light_1.pos.xyz - in_1.world_position.xyz);
-            float diffuse_1 = metal::max(0.0, metal::dot(normal_2, light_dir_1));
-            metal::float3 _e33 = color_1;
-            color_1 = _e33 + ((_e23 * diffuse_1) * light_1.color.xyz);
-        }
+        uint _e16 = i_1;
+        Light light_1 = u_lights.inner[_e16];
+        uint _e19 = i_1;
+        float _e23 = fetch_shadow(_e19, light_1.proj * in_1.world_position, t_shadow, sampler_shadow);
+        metal::float3 light_dir_1 = metal::normalize(light_1.pos.xyz - in_1.world_position.xyz);
+        float diffuse_1 = metal::max(0.0, metal::dot(normal_2, light_dir_1));
+        metal::float3 _e33 = color_1;
+        color_1 = _e33 + ((_e23 * diffuse_1) * light_1.color.xyz);
     }
     metal::float3 _e42 = color_1;
     metal::float4 _e47 = u_entity.color;

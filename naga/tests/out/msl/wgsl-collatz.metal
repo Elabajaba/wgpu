@@ -32,22 +32,19 @@ uint collatz_iterations(
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         uint _e4 = n;
-        if (_e4 > 1u) {
-        } else {
+        if (!(n > 1u)) {
             break;
         }
-        {
-            uint _e7 = n;
-            if (naga_mod(_e7, 2u) == 0u) {
-                uint _e12 = n;
-                n = naga_div(_e12, 2u);
-            } else {
-                uint _e16 = n;
-                n = (3u * _e16) + 1u;
-            }
-            uint _e20 = i;
-            i = _e20 + 1u;
+        uint _e7 = n;
+        if (naga_mod(_e7, 2u) == 0u) {
+            uint _e12 = n;
+            n = naga_div(_e12, 2u);
+        } else {
+            uint _e16 = n;
+            n = (3u * _e16) + 1u;
         }
+        uint _e20 = i;
+        i = _e20 + 1u;
     }
     uint _e23 = i;
     return _e23;

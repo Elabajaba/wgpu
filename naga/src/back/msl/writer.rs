@@ -4338,6 +4338,76 @@ impl<W: Write> Writer<W> {
                     writeln!(self.out, ");")?;
                 }
                 crate::Statement::RayPipelineFunction(_) => unreachable!(),
+                crate::Statement::ForLoop {
+                    ref initializer,
+                    condition,
+                    ref condition_block,
+                    ref update,
+                    ref body,
+                } => {
+                    self.put_block(level, initializer, context)?;
+                    let force_loop_bound_statements =
+                        self.gen_force_bounded_loop_statements(level, context);
+                    let gate_name =
+                        (!update.is_empty()).then(|| self.namer.call("loop_init"));
+
+                    if let Some((ref decl, _)) = force_loop_bound_statements {
+                        writeln!(self.out, "{decl}")?;
+                    }
+                    if let Some(ref gate_name) = gate_name {
+                        writeln!(self.out, "{level}bool {gate_name} = true;")?;
+                    }
+
+                    writeln!(self.out, "{level}while(true) {{")?;
+                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
+                        writeln!(self.out, "{break_and_inc}")?;
+                    }
+                    if let Some(ref gate_name) = gate_name {
+                        let lif = level.next();
+                        let lupdate = lif.next();
+                        writeln!(self.out, "{lif}if (!{gate_name}) {{")?;
+                        self.put_block(lupdate, update, context)?;
+                        writeln!(self.out, "{lif}}}")?;
+                        writeln!(self.out, "{lif}{gate_name} = false;")?;
+                    }
+                    self.put_block(level.next(), condition_block, context)?;
+                    if let Some(condition) = condition {
+                        let lif = level.next();
+                        write!(self.out, "{lif}if (!(")?;
+                        self.put_expression(condition, &context.expression, true)?;
+                        writeln!(self.out, ")) {{")?;
+                        writeln!(self.out, "{}break;", lif.next())?;
+                        writeln!(self.out, "{lif}}}")?;
+                    }
+                    self.put_block(level.next(), body, context)?;
+                    writeln!(self.out, "{level}}}")?;
+                }
+                crate::Statement::WhileLoop {
+                    condition,
+                    ref condition_block,
+                    ref body,
+                } => {
+                    let force_loop_bound_statements =
+                        self.gen_force_bounded_loop_statements(level, context);
+
+                    if let Some((ref decl, _)) = force_loop_bound_statements {
+                        writeln!(self.out, "{decl}")?;
+                    }
+
+                    writeln!(self.out, "{level}while(true) {{")?;
+                    if let Some((_, ref break_and_inc)) = force_loop_bound_statements {
+                        writeln!(self.out, "{break_and_inc}")?;
+                    }
+                    self.put_block(level.next(), condition_block, context)?;
+                    let lif = level.next();
+                    write!(self.out, "{lif}if (!(")?;
+                    self.put_expression(condition, &context.expression, true)?;
+                    writeln!(self.out, ")) {{")?;
+                    writeln!(self.out, "{}break;", lif.next())?;
+                    writeln!(self.out, "{lif}}}")?;
+                    self.put_block(level.next(), body, context)?;
+                    writeln!(self.out, "{level}}}")?;
+                }
             }
         }
 

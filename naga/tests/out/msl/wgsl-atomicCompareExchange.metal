@@ -75,9 +75,10 @@ constant uint SIZE = 128u;
 kernel void test_atomic_compare_exchange_i32_(
   device type_3& arr_i32_ [[user(fake0)]]
 ) {
-    uint i = 0u;
+    uint i = {};
     int old = {};
     bool exchanged = {};
+    i = 0u;
     uint2 loop_bound = uint2(4294967295u);
     bool loop_init = true;
     while(true) {
@@ -89,34 +90,28 @@ kernel void test_atomic_compare_exchange_i32_(
         }
         loop_init = false;
         uint _e2 = i;
-        if (_e2 < SIZE) {
-        } else {
+        if (!(i < SIZE)) {
             break;
         }
-        {
-            uint _e6 = i;
-            int _e8 = metal::atomic_load_explicit(&arr_i32_.inner[_e6], metal::memory_order_relaxed);
-            old = _e8;
-            exchanged = false;
-            uint2 loop_bound_1 = uint2(4294967295u);
-            while(true) {
-                if (metal::all(loop_bound_1 == uint2(0u))) { break; }
-                loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
-                bool _e12 = exchanged;
-                if (!(_e12)) {
-                } else {
-                    break;
-                }
-                {
-                    int _e14 = old;
-                    int new_ = as_type<int>(as_type<float>(_e14) + 1.0);
-                    uint _e20 = i;
-                    int _e22 = old;
-                    _atomic_compare_exchange_result_Sint_4_ _e23 = naga_atomic_compare_exchange_weak_explicit(&arr_i32_.inner[_e20], _e22, new_);
-                    old = _e23.old_value;
-                    exchanged = _e23.exchanged;
-                }
+        uint _e6 = i;
+        int _e8 = metal::atomic_load_explicit(&arr_i32_.inner[_e6], metal::memory_order_relaxed);
+        old = _e8;
+        exchanged = false;
+        uint2 loop_bound_1 = uint2(4294967295u);
+        while(true) {
+            if (metal::all(loop_bound_1 == uint2(0u))) { break; }
+            loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
+            bool _e12 = exchanged;
+            if (!(!(exchanged))) {
+                break;
             }
+            int _e14 = old;
+            int new_ = as_type<int>(as_type<float>(_e14) + 1.0);
+            uint _e20 = i;
+            int _e22 = old;
+            _atomic_compare_exchange_result_Sint_4_ _e23 = naga_atomic_compare_exchange_weak_explicit(&arr_i32_.inner[_e20], _e22, new_);
+            old = _e23.old_value;
+            exchanged = _e23.exchanged;
         }
     }
     return;
@@ -126,9 +121,10 @@ kernel void test_atomic_compare_exchange_i32_(
 kernel void test_atomic_compare_exchange_u32_(
   device type_5& arr_u32_ [[user(fake0)]]
 ) {
-    uint i_1 = 0u;
+    uint i_1 = {};
     uint old_1 = {};
     bool exchanged_1 = {};
+    i_1 = 0u;
     uint2 loop_bound_2 = uint2(4294967295u);
     bool loop_init_1 = true;
     while(true) {
@@ -140,34 +136,28 @@ kernel void test_atomic_compare_exchange_u32_(
         }
         loop_init_1 = false;
         uint _e2 = i_1;
-        if (_e2 < SIZE) {
-        } else {
+        if (!(i_1 < SIZE)) {
             break;
         }
-        {
-            uint _e6 = i_1;
-            uint _e8 = metal::atomic_load_explicit(&arr_u32_.inner[_e6], metal::memory_order_relaxed);
-            old_1 = _e8;
-            exchanged_1 = false;
-            uint2 loop_bound_3 = uint2(4294967295u);
-            while(true) {
-                if (metal::all(loop_bound_3 == uint2(0u))) { break; }
-                loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
-                bool _e12 = exchanged_1;
-                if (!(_e12)) {
-                } else {
-                    break;
-                }
-                {
-                    uint _e14 = old_1;
-                    uint new_1 = as_type<uint>(as_type<float>(_e14) + 1.0);
-                    uint _e20 = i_1;
-                    uint _e22 = old_1;
-                    _atomic_compare_exchange_result_Uint_4_ _e23 = naga_atomic_compare_exchange_weak_explicit(&arr_u32_.inner[_e20], _e22, new_1);
-                    old_1 = _e23.old_value;
-                    exchanged_1 = _e23.exchanged;
-                }
+        uint _e6 = i_1;
+        uint _e8 = metal::atomic_load_explicit(&arr_u32_.inner[_e6], metal::memory_order_relaxed);
+        old_1 = _e8;
+        exchanged_1 = false;
+        uint2 loop_bound_3 = uint2(4294967295u);
+        while(true) {
+            if (metal::all(loop_bound_3 == uint2(0u))) { break; }
+            loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
+            bool _e12 = exchanged_1;
+            if (!(!(exchanged_1))) {
+                break;
             }
+            uint _e14 = old_1;
+            uint new_1 = as_type<uint>(as_type<float>(_e14) + 1.0);
+            uint _e20 = i_1;
+            uint _e22 = old_1;
+            _atomic_compare_exchange_result_Uint_4_ _e23 = naga_atomic_compare_exchange_weak_explicit(&arr_u32_.inner[_e20], _e22, new_1);
+            old_1 = _e23.old_value;
+            exchanged_1 = _e23.exchanged;
         }
     }
     return;

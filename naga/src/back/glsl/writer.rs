@@ -2253,6 +2253,71 @@ impl<'a, W: Write> Writer<'a, W> {
             }
             Statement::CooperativeStore { .. } => unimplemented!(),
             Statement::RayPipelineFunction(_) => unimplemented!(),
+            Statement::ForLoop {
+                ref initializer,
+                condition,
+                ref condition_block,
+                ref update,
+                ref body,
+            } => {
+                for sta in initializer.iter() {
+                    self.write_stmt(sta, ctx, level)?;
+                }
+                self.continue_ctx.enter_loop();
+                if !update.is_empty() {
+                    let gate_name = self.namer.call("loop_init");
+                    writeln!(self.out, "{level}bool {gate_name} = true;")?;
+                    writeln!(self.out, "{level}while(true) {{")?;
+                    let l2 = level.next();
+                    let l3 = l2.next();
+                    writeln!(self.out, "{l2}if (!{gate_name}) {{")?;
+                    for sta in update.iter() {
+                        self.write_stmt(sta, ctx, l3)?;
+                    }
+                    writeln!(self.out, "{l2}}}")?;
+                    writeln!(self.out, "{l2}{gate_name} = false;")?;
+                } else {
+                    writeln!(self.out, "{level}while(true) {{")?;
+                }
+                for sta in condition_block.iter() {
+                    self.write_stmt(sta, ctx, level.next())?;
+                }
+                if let Some(condition) = condition {
+                    let l2 = level.next();
+                    write!(self.out, "{l2}if (!(")?;
+                    self.write_expr(condition, ctx)?;
+                    writeln!(self.out, ")) {{")?;
+                    writeln!(self.out, "{}break;", l2.next())?;
+                    writeln!(self.out, "{l2}}}")?;
+                }
+                for sta in body.iter() {
+                    self.write_stmt(sta, ctx, level.next())?;
+                }
+                writeln!(self.out, "{level}}}")?;
+                self.continue_ctx.exit_loop();
+            }
+            Statement::WhileLoop {
+                condition,
+                ref condition_block,
+                ref body,
+            } => {
+                self.continue_ctx.enter_loop();
+                writeln!(self.out, "{level}while(true) {{")?;
+                let l2 = level.next();
+                for sta in condition_block.iter() {
+                    self.write_stmt(sta, ctx, l2)?;
+                }
+                write!(self.out, "{l2}if (!(")?;
+                self.write_expr(condition, ctx)?;
+                writeln!(self.out, ")) {{")?;
+                writeln!(self.out, "{}break;", l2.next())?;
+                writeln!(self.out, "{l2}}}")?;
+                for sta in body.iter() {
+                    self.write_stmt(sta, ctx, l2)?;
+                }
+                writeln!(self.out, "{level}}}")?;
+                self.continue_ctx.exit_loop();
+            }
         }
 
         Ok(())

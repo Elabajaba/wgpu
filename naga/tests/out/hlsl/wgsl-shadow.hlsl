@@ -92,9 +92,10 @@ float4 fs_main(FragmentInput_fs_main fragmentinput_fs_main) : SV_Target0
 {
     VertexOutput in_ = { fragmentinput_fs_main.proj_position_1, fragmentinput_fs_main.world_normal_1, fragmentinput_fs_main.world_position_1 };
     float3 color = c_ambient;
-    uint i = 0u;
+    uint i = (uint)0;
 
     float3 normal_1 = normalize(in_.world_normal);
+    i = 0u;
     uint2 loop_bound = uint2(4294967295u, 4294967295u);
     bool loop_init = true;
     while(true) {
@@ -107,20 +108,17 @@ float4 fs_main(FragmentInput_fs_main fragmentinput_fs_main) : SV_Target0
         loop_init = false;
         uint _e7 = i;
         uint _e11 = u_globals.num_lights.x;
-        if ((_e7 < min(_e11, c_max_lights))) {
-        } else {
+        if (!((_e7 < min(_e11, c_max_lights)))) {
             break;
         }
-        {
-            uint _e16 = i;
-            Light light = ConstructLight(float4x4(asfloat(s_lights.Load4(_e16*96+0+0)), asfloat(s_lights.Load4(_e16*96+0+16)), asfloat(s_lights.Load4(_e16*96+0+32)), asfloat(s_lights.Load4(_e16*96+0+48))), asfloat(s_lights.Load4(_e16*96+64)), asfloat(s_lights.Load4(_e16*96+80)));
-            uint _e19 = i;
-            const float _e23 = fetch_shadow(_e19, mul(in_.world_position, light.proj));
-            float3 light_dir = normalize((light.pos.xyz - in_.world_position.xyz));
-            float diffuse = max(0.0, dot(normal_1, light_dir));
-            float3 _e33 = color;
-            color = (_e33 + ((_e23 * diffuse) * light.color.xyz));
-        }
+        uint _e16 = i;
+        Light light = ConstructLight(float4x4(asfloat(s_lights.Load4(_e16*96+0+0)), asfloat(s_lights.Load4(_e16*96+0+16)), asfloat(s_lights.Load4(_e16*96+0+32)), asfloat(s_lights.Load4(_e16*96+0+48))), asfloat(s_lights.Load4(_e16*96+64)), asfloat(s_lights.Load4(_e16*96+80)));
+        uint _e19 = i;
+        const float _e23 = fetch_shadow(_e19, mul(in_.world_position, light.proj));
+        float3 light_dir = normalize((light.pos.xyz - in_.world_position.xyz));
+        float diffuse = max(0.0, dot(normal_1, light_dir));
+        float3 _e33 = color;
+        color = (_e33 + ((_e23 * diffuse) * light.color.xyz));
     }
     float3 _e42 = color;
     float4 _e47 = u_entity.color;
@@ -131,9 +129,10 @@ float4 fs_main_without_storage(FragmentInput_fs_main_without_storage fragmentinp
 {
     VertexOutput in_1 = { fragmentinput_fs_main_without_storage.proj_position_2, fragmentinput_fs_main_without_storage.world_normal_2, fragmentinput_fs_main_without_storage.world_position_2 };
     float3 color_1 = c_ambient;
-    uint i_1 = 0u;
+    uint i_1 = (uint)0;
 
     float3 normal_2 = normalize(in_1.world_normal);
+    i_1 = 0u;
     uint2 loop_bound_1 = uint2(4294967295u, 4294967295u);
     bool loop_init_1 = true;
     while(true) {
@@ -146,20 +145,17 @@ float4 fs_main_without_storage(FragmentInput_fs_main_without_storage fragmentinp
         loop_init_1 = false;
         uint _e7 = i_1;
         uint _e11 = u_globals.num_lights.x;
-        if ((_e7 < min(_e11, c_max_lights))) {
-        } else {
+        if (!((_e7 < min(_e11, c_max_lights)))) {
             break;
         }
-        {
-            uint _e16 = i_1;
-            Light light_1 = u_lights[_e16];
-            uint _e19 = i_1;
-            const float _e23 = fetch_shadow(_e19, mul(in_1.world_position, light_1.proj));
-            float3 light_dir_1 = normalize((light_1.pos.xyz - in_1.world_position.xyz));
-            float diffuse_1 = max(0.0, dot(normal_2, light_dir_1));
-            float3 _e33 = color_1;
-            color_1 = (_e33 + ((_e23 * diffuse_1) * light_1.color.xyz));
-        }
+        uint _e16 = i_1;
+        Light light_1 = u_lights[_e16];
+        uint _e19 = i_1;
+        const float _e23 = fetch_shadow(_e19, mul(in_1.world_position, light_1.proj));
+        float3 light_dir_1 = normalize((light_1.pos.xyz - in_1.world_position.xyz));
+        float diffuse_1 = max(0.0, dot(normal_2, light_dir_1));
+        float3 _e33 = color_1;
+        color_1 = (_e33 + ((_e23 * diffuse_1) * light_1.color.xyz));
     }
     float3 _e42 = color_1;
     float4 _e47 = u_entity.color;

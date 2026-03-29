@@ -52,6 +52,7 @@ void main() {
     vec3 color_1 = c_ambient;
     uint i_1 = 0u;
     vec3 normal_1 = normalize(in_1.world_normal);
+    i_1 = 0u;
     bool loop_init = true;
     while(true) {
         if (!loop_init) {
@@ -61,20 +62,17 @@ void main() {
         loop_init = false;
         uint _e7 = i_1;
         uint _e11 = _group_0_binding_0_fs.num_lights.x;
-        if ((_e7 < min(_e11, c_max_lights))) {
-        } else {
+        if (!((_e7 < min(_e11, c_max_lights)))) {
             break;
         }
-        {
-            uint _e16 = i_1;
-            Light light = _group_0_binding_1_fs[_e16];
-            uint _e19 = i_1;
-            float _e23 = fetch_shadow(_e19, (light.proj * in_1.world_position));
-            vec3 light_dir = normalize((light.pos.xyz - in_1.world_position.xyz));
-            float diffuse = max(0.0, dot(normal_1, light_dir));
-            vec3 _e33 = color_1;
-            color_1 = (_e33 + ((_e23 * diffuse) * light.color.xyz));
-        }
+        uint _e16 = i_1;
+        Light light = _group_0_binding_1_fs[_e16];
+        uint _e19 = i_1;
+        float _e23 = fetch_shadow(_e19, (light.proj * in_1.world_position));
+        vec3 light_dir = normalize((light.pos.xyz - in_1.world_position.xyz));
+        float diffuse = max(0.0, dot(normal_1, light_dir));
+        vec3 _e33 = color_1;
+        color_1 = (_e33 + ((_e23 * diffuse) * light.color.xyz));
     }
     vec3 _e42 = color_1;
     vec4 _e47 = _group_1_binding_0_fs.color;
