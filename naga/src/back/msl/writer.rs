@@ -1058,7 +1058,7 @@ impl<W: Write> Writer<W> {
             .function
             .local_variables
             .iter()
-            .filter(|(handle, _)| !for_init_vars.contains(handle))
+            .filter(|&(ref handle, _)| !for_init_vars.contains(handle))
             .map(|(local_handle, local)| {
                 let name_key = NameKey::local(context.origin, local_handle);
                 (name_key, local.ty, local.init)
